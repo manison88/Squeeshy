@@ -1,0 +1,150 @@
+/* ============================================================
+   Squish Index — design tokens
+   Source of truth: SPEC.md §2 (locked). Do not invent values here.
+   Every literal below is traceable to the spec table or geometry list.
+   ============================================================ */
+
+:root {
+  /* Palette — SPEC.md §2 table. The UI has no colour of its own. */
+  --putty: #F1F0EC;   /* app canvas */
+  --ink:   #14151A;   /* primary text, primary buttons */
+  --soft:  #74777E;   /* secondary text, labels */
+  --line:  #DDDBD4;   /* hairline rules and borders */
+  --chalk: #FFFFFF;   /* raised surfaces, photo plates */
+
+  /* Geometry — SPEC.md §2 "Geometry" */
+  --r-card:   15px;   /* cards */
+  --r-plate:  19px;   /* photo plates, 19–24 range */
+  --r-plate-lg: 24px;
+  --r-sheet:  26px;   /* sheet tops */
+  --r-pill:  999px;   /* pills */
+  --gutter:   13px;   /* grid gutter */
+  --margin:   22px;   /* screen margin */
+  --hairline: 1px;    /* hairlines are 1pt line, never shadows */
+
+  /* Type stack — SPEC.md §2 "Type" */
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --body:    "Inter", ui-sans-serif, system-ui, sans-serif;
+  --data:    "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Data type is always uppercase, 0.16em tracking, 10pt. */
+  --data-size: 10px;
+  --data-track: 0.16em;
+  --display-track: -0.02em;
+}
+
+/* ============================================================
+   Reset / canvas
+   ============================================================ */
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--putty);
+  color: var(--ink);
+  font-family: var(--body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ============================================================
+   Type primitives
+   The mono/display split is load-bearing (SPEC.md §2):
+   mono says *measured*, display says *named*.
+   A toy's name is never mono. A measurement is never display,
+   except the hero squish numeral.
+   ============================================================ */
+
+.display {
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: var(--display-track);
+  line-height: 1.05;
+}
+.display-800 { font-weight: 800; }
+
+.eyebrow,
+.data {
+  font-family: var(--data);
+  font-weight: 400;
+  font-size: var(--data-size);
+  letter-spacing: var(--data-track);
+  text-transform: uppercase;
+  color: var(--soft);
+}
+.data-500 { font-weight: 500; }
+.data-ink { color: var(--ink); }
+
+.body    { font-family: var(--body); font-weight: 400; line-height: 1.45; }
+.body-500{ font-weight: 500; }
+.body-600{ font-weight: 600; }
+
+/* ============================================================
+   Surfaces
+   Hairlines, never shadows — except the floating CTA and bottom sheet.
+   ============================================================ */
+
+.plate {
+  background: var(--chalk);
+  border-radius: var(--r-plate);
+  border: var(--hairline) solid var(--line);
+  overflow: hidden;
+}
+
+.card {
+  border-radius: var(--r-card);
+  border: var(--hairline) solid var(--line);
+  background: var(--chalk);
+}
+
+.rule { height: var(--hairline); background: var(--line); border: 0; }
+
+/* Pills / chips. A count badge carries filter state —
+   colour alone must never be the only indicator (SPEC.md §3). */
+.chip {
+  font-family: var(--data);
+  font-size: var(--data-size);
+  letter-spacing: var(--data-track);
+  text-transform: uppercase;
+  border-radius: var(--r-pill);
+  border: var(--hairline) solid var(--line);
+  background: var(--chalk);
+  color: var(--ink);
+  padding: 9px 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+}
+.chip-badge {
+  font-family: var(--data);
+  font-size: 9px;
+  letter-spacing: 0;
+  background: var(--ink);
+  color: var(--chalk);
+  border-radius: var(--r-pill);
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The two sanctioned shadows, per SPEC.md §2. */
+.shadow-cta   { box-shadow: 0 6px 20px rgba(20, 21, 26, 0.22); }
+.shadow-sheet { box-shadow: 0 -8px 32px rgba(20, 21, 26, 0.10); }
+
+/* ============================================================
+   Reduce Motion — SPEC.md §6. The scan sweep and durometer
+   animation must both no-op.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
