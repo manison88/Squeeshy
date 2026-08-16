@@ -1,0 +1,329 @@
+<title>Five Ways to Build the Index</title>
+
+<style>
+  @font-face { font-family: "Inter"; src: __INTER__; font-weight: 100 900; font-display: block; }
+  @font-face { font-family: "Archivo"; src: __ARCHIVO__; font-weight: 400 700;
+               font-stretch: 62% 125%; font-display: block; }
+  @font-face { font-family: "Newsreader"; src: __SERIF__; font-weight: 300 600; font-display: block; }
+  @font-face { font-family: "DM Mono"; src: __MONO__; font-weight: 400; font-display: block; }
+  @font-face { font-family: "DM Mono"; src: __MONO5__; font-weight: 500; font-display: block; }
+
+  /* One page, one ground. These are artboards, not phones — the frame is a
+     hairline, not a bezel, so nothing competes with the work inside it. */
+  :root {
+    --paper: #FFFFFF;
+    --ink: #0B0B0C;
+    --grey: #6E7075;
+    --rule: #E3E3E0;
+    --grid: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --mono: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --serif: "Newsreader", ui-serif, Georgia, serif;
+    --sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink);
+         font-family: var(--grid); -webkit-font-smoothing: antialiased; }
+  svg { display: block; }
+  h1, h2, h3, p { margin: 0; }
+
+  .page { max-width: 1600px; margin: 0 auto; padding: 64px 40px 96px; }
+
+  .masthead { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+              gap: 56px; padding-bottom: 40px; border-bottom: 1px solid var(--ink); }
+  .masthead .ey { font-family: var(--mono); font-size: 9px; letter-spacing: .2em;
+                  text-transform: uppercase; color: var(--grey); }
+  .masthead h1 { font-family: var(--grid); font-weight: 600; font-size: 46px;
+                 letter-spacing: -0.03em; line-height: 1.02; margin-top: 13px;
+                 text-wrap: balance; }
+  .masthead .lede { font-family: var(--grid); font-weight: 400; font-size: 15px;
+                    line-height: 24px; max-width: 62ch; }
+  .masthead .lede + .lede { margin-top: 16px; color: var(--grey); }
+
+  .var { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+         gap: 56px; padding: 48px 0; border-bottom: 1px solid var(--rule); }
+  .brief { position: sticky; top: 32px; align-self: start; }
+  .brief .num { font-family: var(--mono); font-size: 9px; letter-spacing: .2em; color: var(--grey); }
+  .brief h2 { font-family: var(--grid); font-weight: 600; font-size: 30px;
+              letter-spacing: -0.02em; margin-top: 8px; }
+  .brief .position { font-family: var(--grid); font-size: 15px; line-height: 22px;
+                     margin-top: 10px; }
+  .brief .body { font-family: var(--grid); font-weight: 400; font-size: 13px;
+                 line-height: 20px; color: var(--grey); margin-top: 14px; }
+  .brief .spec { font-family: var(--mono); font-size: 9px; letter-spacing: .12em;
+                 text-transform: uppercase; color: var(--grey); margin-top: 18px;
+                 padding-top: 14px; border-top: 1px solid var(--rule); line-height: 17px; }
+
+  .devs { display: flex; gap: 24px; flex-wrap: wrap; overflow-x: auto; }
+  .dev { width: 393px; height: 852px; position: relative; overflow: hidden;
+         border: 1px solid var(--rule); flex: none; }
+  .scr { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .st { height: 44px; flex: none; }
+
+  .colophon { padding-top: 40px; font-family: var(--grid); font-size: 13px;
+              line-height: 20px; color: var(--grey); max-width: 68ch; }
+
+  /* ==========================================================
+     01 · LEDGER — paper, square, hairline grid
+     ========================================================== */
+  .v1 { background: #FFFFFF; }
+  .v1 header { padding: 0 20px 16px; }
+  .v1 header.tight { padding-bottom: 20px; }
+  .v1 .ey { display: block; font-family: var(--mono); font-size: 9px; letter-spacing: .2em;
+            text-transform: uppercase; color: #86888C; }
+  .v1 h2 { font-family: var(--grid); font-weight: 600; font-size: 28px;
+           letter-spacing: -0.025em; margin: 6px 0 6px; }
+  .v1 .ey.n { color: #0B0B0C; }
+  .v1 nav { display: flex; gap: 22px; padding: 0 20px; border-bottom: 1px solid var(--rule); }
+  .v1 nav span { font-family: var(--mono); font-size: 9px; letter-spacing: .18em;
+                 text-transform: uppercase; color: #86888C; padding-bottom: 10px;
+                 border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .v1 nav .on { color: #0B0B0C; border-bottom-color: #0B0B0C; }
+  .v1 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+              background: var(--rule); border-bottom: 1px solid var(--rule); }
+  .v1 .c { background: #fff; padding: 16px 16px 12px; }
+  .v1 .pl { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+            padding: 10%; }
+  .v1 .nm { font-family: var(--grid); font-weight: 600; font-size: 13px;
+            letter-spacing: -0.01em; margin-top: 4px; }
+  .v1 .mt { display: flex; justify-content: space-between; margin-top: 6px;
+            font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+            text-transform: uppercase; color: #86888C; }
+  .v1 .mt span:last-child { color: #0B0B0C; }
+  .v1 .hero { height: 250px; border-top: 1px solid var(--rule);
+              border-bottom: 1px solid var(--rule); display: flex; align-items: center;
+              justify-content: center; padding: 26px; }
+  .v1 .rows { padding: 0 20px; }
+  .v1 .r { display: flex; justify-content: space-between; align-items: baseline;
+           height: 36px; border-bottom: 1px solid var(--rule); }
+  .v1 .r span:first-child { font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+                            text-transform: uppercase; color: #86888C; }
+  .v1 .r span:last-child { font-family: var(--grid); font-size: 13px; }
+  .v1 .duro { display: flex; align-items: flex-end; gap: 14px; padding: 26px 20px 0; }
+  .v1 .duro .ey { flex: none; padding-bottom: 4px; }
+  .v1 .duro .num { font-family: var(--grid); font-weight: 600; font-size: 34px;
+                   letter-spacing: -0.03em; line-height: .8; margin-left: auto; }
+  .v1 .sent { padding: 14px 20px 0; font-size: 13px; line-height: 19px; color: #6E7075; }
+  .v1 .pal { display: flex; align-items: center; gap: 14px; padding: 24px 20px 0; }
+  .v1 .sw { display: flex; gap: 4px; }
+  .v1 .sw i { width: 18px; height: 18px; display: block; outline: 1px solid var(--rule);
+              outline-offset: -1px; }
+  .v1 .foot { margin-top: auto; height: 54px; background: #0B0B0C; color: #fff;
+              display: flex; align-items: center; padding: 0 20px;
+              font-family: var(--mono); font-size: 9px; letter-spacing: .2em;
+              text-transform: uppercase; }
+
+  .bars { display: flex; align-items: flex-end; }
+  .bars .b { display: flex; align-items: flex-end; justify-content: center; }
+  .bars i { display: block; }
+
+  /* ==========================================================
+     02 · INSTRUMENT — dark, mono, a caliper's view
+     ========================================================== */
+  .v2 { background: #0A0B0D; color: #E8E9EA; }
+  .v2 header { padding: 0 20px 18px; border-bottom: 1px solid #1C1F23; }
+  .v2 .ey { font-family: var(--mono); font-size: 9px; letter-spacing: .2em;
+            text-transform: uppercase; color: #6B7078; }
+  .v2 .readout { display: flex; align-items: baseline; gap: 8px; margin-top: 14px; }
+  .v2 .big { font-family: var(--mono); font-weight: 500; font-size: 30px;
+             font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .v2 .big.r { margin-left: 20px; }
+  .v2 .unit { font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+              text-transform: uppercase; color: #6B7078; }
+  .v2 .hd, .v2 .row { display: grid; grid-template-columns: 30px 26px 1fr 62px 24px;
+                      align-items: center; gap: 10px; padding: 0 20px; }
+  .v2 .hd { height: 28px; font-family: var(--mono); font-size: 8px; letter-spacing: .18em;
+            text-transform: uppercase; color: #4E535A; border-bottom: 1px solid #1C1F23; }
+  .v2 .row { height: 64px; border-bottom: 1px solid #14171A; }
+  .v2 .row .ix, .v2 .row .mm, .v2 .row .sq { font-family: var(--mono); font-size: 10px;
+            letter-spacing: .06em; color: #6B7078; font-variant-numeric: tabular-nums; }
+  .v2 .row .sq { color: #E8E9EA; text-align: right; }
+  .v2 .row .th { width: 26px; height: 26px; }
+  .v2 .summary { display: flex; gap: 22px; padding: 22px 20px;
+                 border-top: 1px solid #1C1F23; font-family: var(--mono);
+                 font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+                 color: #6B7078; }
+  .v2 .summary b { font-weight: 500; color: #E8E9EA; font-size: 12px; }
+  .v2 .row .nm { font-family: var(--grid); font-weight: 400; font-size: 13px; }
+  .v2 .frame { height: 320px; position: relative; display: flex; align-items: center;
+               justify-content: center; border-bottom: 1px solid #1C1F23; }
+  .v2 .frame > svg { width: 190px; height: 190px; }
+  .v2 .cross { position: absolute; background: #23262B; }
+  .v2 .cross.v { width: 1px; top: 24px; bottom: 24px; left: 50%; }
+  .v2 .cross.h { height: 1px; left: 24px; right: 24px; top: 50%; }
+  .v2 .dim { position: absolute; font-family: var(--mono); font-size: 8px;
+             letter-spacing: .16em; text-transform: uppercase; color: #6B7078; }
+  .v2 .dim.w { bottom: 16px; left: 50%; transform: translateX(-50%); }
+  .v2 .dim.h2 { right: 6px; top: 50%; transform: translateY(-50%) rotate(90deg); }
+  .v2 .panel { padding: 22px 20px; }
+  .v2 .ttl { font-family: var(--grid); font-weight: 600; font-size: 20px;
+             letter-spacing: -0.02em; }
+  .v2 .meter { display: flex; align-items: center; gap: 12px; margin-top: 20px; }
+  .v2 .meter .m { display: flex; gap: 3px; }
+  .v2 .meter i { width: 16px; height: 6px; background: #23262B; display: block; }
+  .v2 .meter i.on { background: #E8E9EA; }
+  .v2 .meter .v { font-family: var(--mono); font-weight: 500; font-size: 14px;
+                  font-variant-numeric: tabular-nums; }
+  .v2 .kv { display: grid; grid-template-columns: 78px 1fr 78px 1fr; gap: 12px 10px;
+            margin-top: 26px; align-items: baseline; }
+  .v2 .kv span { font-family: var(--mono); font-size: 8px; letter-spacing: .18em;
+                 text-transform: uppercase; color: #6B7078; }
+  .v2 .kv b { font-family: var(--grid); font-weight: 400; font-size: 12px; }
+  .v2 .note { margin-top: 26px; font-family: var(--grid); font-size: 12px;
+              line-height: 19px; color: #6B7078; }
+  .v2 .foot { margin-top: auto; height: 56px; border-top: 1px solid #1C1F23;
+              display: flex; align-items: center; gap: 14px; padding: 0 20px; }
+  .v2 .foot .spark { display: flex; align-items: flex-end; gap: 3px; height: 14px; }
+  .v2 .foot .spark i { width: 5px; background: #E8E9EA; display: block; }
+  .v2 .foot .sw { display: flex; gap: 4px; }
+  .v2 .foot .sw i { width: 14px; height: 14px; display: block; }
+  .v2 .cap-btn { margin-left: auto; font-family: var(--mono); font-size: 9px;
+                 letter-spacing: .2em; text-transform: uppercase; color: #0A0B0D;
+                 background: #E8E9EA; padding: 7px 12px; }
+
+  /* ==========================================================
+     03 · PLATE — the photograph is the interface
+     ========================================================== */
+  .v3 { background: #FFFFFF; }
+  .v3 h2 { font-family: var(--serif); font-weight: 300; font-size: 36px;
+           letter-spacing: -0.01em; padding: 8px 34px 0; }
+  .v3 .sub { font-family: var(--mono); font-size: 9px; letter-spacing: .18em;
+             text-transform: uppercase; color: #8A8A86; padding: 10px 34px 0; }
+  .v3 .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 26px;
+               padding: 28px 34px 0; }
+  .v3 .t .im { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+               padding: 14%; }
+  .v3 .lb { display: flex; justify-content: space-between; align-items: baseline;
+            font-family: var(--serif); font-weight: 400; font-size: 14px; margin-top: 6px; }
+  .v3 .lb span { font-family: var(--mono); font-size: 9px; color: #8A8A86; }
+  .v3 .bleed { flex: 1; display: flex; align-items: center; justify-content: center;
+               padding: 44px; min-height: 0; }
+  .v3 .cap { padding: 0 34px 44px; }
+  .v3 h3 { font-family: var(--serif); font-weight: 400; font-size: 30px;
+           letter-spacing: -0.01em; }
+  .v3 .dsc { font-family: var(--serif); font-weight: 300; font-size: 16px;
+             line-height: 25px; color: #46474A; margin-top: 10px; max-width: 42ch; }
+  .v3 .dsc.q { margin-top: 22px; }
+  .v3 .scale { display: flex; align-items: flex-end; gap: 16px; margin-top: 30px; }
+  .v3 .lbl { font-family: var(--mono); font-size: 9px; letter-spacing: .18em;
+             text-transform: uppercase; color: #8A8A86; padding-bottom: 3px; }
+  .v3 .rule { display: flex; align-items: flex-end; gap: 0; height: 18px;
+              border-bottom: 1px solid #16171A; flex: 1; }
+  .v3 .rule i { flex: 1; height: 5px; border-left: 1px solid #D6D6D2; }
+  .v3 .rule i.on { height: 16px; border-left-color: #16171A; }
+  .v3 .fig { font-family: var(--serif); font-weight: 400; font-size: 44px; line-height: .8; }
+
+  /* ==========================================================
+     04 · REGISTER — a collection is a table
+     ========================================================== */
+  .v4 { background: #FCFCFD; }
+  .v4 header { padding: 0 18px 14px; display: flex; align-items: baseline; gap: 12px; }
+  .v4 h2 { font-family: var(--grid); font-weight: 600; font-size: 22px;
+           letter-spacing: -0.02em; }
+  .v4 .ey { font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+            text-transform: uppercase; color: #7C8087; }
+  .v4 .tools { display: flex; gap: 18px; padding: 0 18px;
+               border-bottom: 1px solid #E6E8EB; }
+  .v4 .tools span { font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+                    text-transform: uppercase; color: #7C8087; padding-bottom: 9px;
+                    border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .v4 .tools .on { color: #101114; border-bottom-color: #101114; }
+  .v4 .tbl { width: 100%; border-collapse: collapse; }
+  .v4 th { font-family: var(--mono); font-size: 8px; letter-spacing: .16em;
+           text-transform: uppercase; color: #9096A0; text-align: left; font-weight: 400;
+           padding: 10px 6px; border-bottom: 1px solid #E6E8EB; }
+  .v4 td { padding: 0 6px; height: 40px; border-bottom: 1px solid #EDEFF2;
+           font-family: var(--grid); font-size: 12px; vertical-align: middle; }
+  .v4 th:first-child, .v4 td:first-child { padding-left: 18px; }
+  .v4 th:last-child, .v4 td:last-child { padding-right: 18px; }
+  .v4 .ix, .v4 .sz, .v4 .sq { font-family: var(--mono); font-size: 10px;
+           font-variant-numeric: tabular-nums; color: #6C7178; }
+  .v4 .sq { color: #101114; text-align: right; }
+  .v4 .cl { color: #6C7178; }
+  .v4 .th span { display: block; width: 15px; height: 15px; border-radius: 2px; }
+  .v4 .nm { font-weight: 500; }
+  .v4 .cells { display: flex; gap: 1.5px; }
+  .v4 .cells i { display: block; width: 3px; height: 12px; background: #E1E4E8; }
+  .v4 .cells i.on { background: #101114; }
+  .v4 .cells.lg i { width: 5px; height: 20px; }
+  .v4 .pv { height: 210px; margin: 16px 18px 0; background: #F4F5F7;
+            display: flex; align-items: center; justify-content: center; padding: 26px; }
+  .v4 .sqline { display: flex; align-items: center; gap: 12px; padding: 20px 18px; }
+  .v4 .sqline .val { font-family: var(--mono); font-weight: 500; font-size: 14px; }
+  .v4 .sqline .term { font-family: var(--grid); font-size: 12px; color: #6C7178;
+                      margin-left: auto; }
+  .v4 .tbl.kv td:first-child { font-family: var(--mono); font-size: 8px;
+            letter-spacing: .16em; text-transform: uppercase; color: #9096A0; width: 40%; }
+  .v4 .tbl.kv td { height: 34px; }
+  .v4 .foot { margin-top: auto; height: 44px; border-top: 1px solid #E6E8EB;
+              display: flex; align-items: center; gap: 20px; padding: 0 18px;
+              font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+              text-transform: uppercase; color: #7C8087; }
+
+  /* ==========================================================
+     05 · OBJECT — space is the only structure
+     ========================================================== */
+  .v5 { background: #EFF0EF; color: #23262A; }
+  .v5 h2 { font-family: var(--sans); font-weight: 200; font-size: 52px;
+           letter-spacing: -0.03em; padding: 26px 34px 0; }
+  .v5 .sub { font-family: var(--mono); font-size: 9px; letter-spacing: .2em;
+             text-transform: uppercase; color: #83878B; padding: 12px 34px 0; }
+  .v5 .objs { display: grid; grid-template-columns: 1fr 1fr; gap: 34px 30px;
+              padding: 44px 34px 0; }
+  .v5 .o .a { aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+              padding: 14%; }
+  .v5 .o .l { display: flex; justify-content: space-between; align-items: baseline;
+              font-family: var(--sans); font-weight: 300; font-size: 13px; margin-top: 12px; }
+  .v5 .o .l span { font-family: var(--mono); font-size: 10px; color: #83878B; }
+  .v5 .art { height: 300px; display: flex; align-items: center; justify-content: center;
+             padding: 34px; margin-top: 20px; }
+  .v5 h3 { font-family: var(--sans); font-weight: 300; font-size: 28px;
+           letter-spacing: -0.02em; padding: 34px 34px 0; }
+  .v5 .fig { display: flex; align-items: flex-end; gap: 24px; padding: 40px 34px 0; }
+  .v5 .fig .n { font-family: var(--sans); font-weight: 200; font-size: 76px;
+                line-height: .78; letter-spacing: -0.05em; }
+  .v5 .strokes { display: flex; align-items: flex-end; gap: 9px; padding-bottom: 6px; }
+  .v5 .strokes i { display: block; width: 1.5px; height: 9px; background: #C2C5C4; }
+  .v5 .strokes i.on { height: 30px; background: #23262A; }
+  .v5 .term { font-family: var(--sans); font-weight: 300; font-size: 15px;
+              color: #62666A; padding: 22px 34px 0; }
+  .v5 .facts { display: flex; gap: 20px; margin-top: auto; padding: 0 34px 44px;
+               font-family: var(--mono); font-size: 9px; letter-spacing: .16em;
+               text-transform: uppercase; color: #83878B; }
+
+  @media (max-width: 900px) {
+    .page { padding: 40px 20px 64px; }
+    .masthead, .var { grid-template-columns: 1fr; gap: 26px; }
+    .brief { position: static; }
+    .masthead h1 { font-size: 34px; }
+  }
+</style>
+
+<main class="page">
+  <header class="masthead">
+    <div>
+      <span class="ey">Squish Index &middot; direction study</span>
+    </div>
+    <div>
+      <h1>Five ways to build the index.</h1>
+      <p class="lede">The same app, the same data, five positions on what a catalogue of soft
+        objects should look like. Each direction is shown twice: the collection, and one
+        specimen. Nothing here is decorated — every rule, column and figure is carrying
+        information.</p>
+      <p class="lede">Specimens are drawn as flat object studies rather than photographs, so
+        the shapes stand in for what the camera will supply. No faces, no highlights, no
+        gradients. Pick one and it becomes the build.</p>
+    </div>
+  </header>
+
+  __SECTIONS__
+
+  <footer class="colophon">
+    Archivo, Inter, Newsreader and DM Mono, all under the SIL Open Font License 1.1 and inlined
+    as latin subsets. Directions 01 and 04 keep the ten-step squish scale as discrete marks;
+    02 turns it into a segmented meter; 03 reduces it to a ruled scale with one marker; 05 sets
+    it as a figure with ten hairline strokes. Only 01 keeps the area-conserving compression from
+    the original specification.
+  </footer>
+</main>
