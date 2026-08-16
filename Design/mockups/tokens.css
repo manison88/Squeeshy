@@ -137,6 +137,19 @@ body {
 .shadow-sheet { box-shadow: 0 -8px 32px rgba(20, 21, 26, 0.10); }
 
 /* ============================================================
+   Focus. SPEC.md §6 makes accessibility non-optional, and the
+   durometer is keyboard-operable, so it needs a visible ring.
+   Uses ink rather than the browser default blue — the UI has no
+   colour of its own (§2).
+   ============================================================ */
+
+:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ============================================================
    Reduce Motion — SPEC.md §6. The scan sweep and durometer
    animation must both no-op.
    ============================================================ */
