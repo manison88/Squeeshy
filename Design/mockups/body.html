@@ -1,0 +1,435 @@
+<!--
+  Squish Index — mockups (screens 1-4, Milestone 1 scope)
+
+  Reconstructed from SPEC.md §2/§3 and Design/UX-SPEC.md. The original
+  squish-index-mockups.html named in the kickoff was never supplied; this
+  stands in as the reviewable visual target.
+
+  The durometer is LIVE. Drag or tap it on screen 4 to watch the bars
+  compress. The geometry is UX-SPEC §5.1 exactly, so what renders here is
+  the same curve the SwiftUI will implement.
+
+  Assembled by build.py — edit this file, not squish-index-mockups.html.
+-->
+
+<style>
+  /* ---- page chrome (not part of the app) ---- */
+  .page      { padding: 34px 22px 56px; max-width: 1760px; margin: 0 auto; }
+  .page-head { max-width: 620px; margin-bottom: 34px; }
+  .page-head h1 { font-family: var(--display); font-weight: 800;
+                  letter-spacing: -0.02em; font-size: 34px; margin-bottom: 8px; }
+  .page-head p  { font-family: var(--body); font-size: 15px; line-height: 21px;
+                  color: #5F6269; }
+  .rack { display: flex; flex-wrap: wrap; gap: 34px; align-items: flex-start; }
+  .slot { width: 393px; }
+  .slot > .cap { margin-bottom: 13px; }
+  .cap b { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+           text-transform: uppercase; font-weight: 500; color: var(--ink); }
+  .cap span { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+              text-transform: uppercase; color: #5F6269; margin-left: 8px; }
+
+  /* ---- device ---- */
+  .device { width: 393px; height: 852px; border-radius: 44px; overflow: hidden;
+            position: relative; background: var(--putty);
+            border: var(--hairline) solid var(--line); }
+  .device.dark { background: var(--ink); }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .safe-t { height: 59px; flex: none; }
+  .safe-b { height: 34px; flex: none; }
+  .mx     { padding-left: 22px; padding-right: 22px; }
+
+  /* ---- app type tokens (UX-SPEC §2.1) ---- */
+  .D1 { font-family: var(--display); font-weight: 800; font-size: 44px; letter-spacing: -0.02em; line-height: 1; }
+  .D2 { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 34px; }
+  .D3 { font-family: var(--display); font-weight: 600; font-size: 24px; letter-spacing: -0.02em; line-height: 29px; }
+  .D4 { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: -0.02em; line-height: 21px; }
+  .B1 { font-family: var(--body); font-weight: 400; font-size: 15px; line-height: 21px; }
+  .B2 { font-family: var(--body); font-weight: 600; font-size: 16px; }
+  .B3 { font-family: var(--body); font-weight: 400; font-size: 13px; }
+  .M1 { font-family: var(--data); font-weight: 400; font-size: 10px;
+        letter-spacing: 0.16em; text-transform: uppercase; }
+  .M2 { font-family: var(--data); font-weight: 500; font-size: 12px; letter-spacing: 0.04em; }
+
+  /* AA-safe secondary. See UX-SPEC §7.3 — raw `soft` on `putty` is 3.93:1. */
+  .dim { color: #5F6269; }
+  .ink { color: var(--ink); }
+
+  /* ---- shelf header ---- */
+  .stat  { margin-top: 5px; }
+  .band  { padding-top: 22px; padding-bottom: 13px; background: var(--putty); }
+  .seg   { display: flex; height: 36px; border: var(--hairline) solid var(--line);
+           border-radius: var(--r-pill); background: var(--chalk); padding: 3px; gap: 3px; }
+  .seg button { flex: 1; border: 0; border-radius: var(--r-pill); background: none;
+                font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+                text-transform: uppercase; color: #5F6269; cursor: pointer; }
+  .seg button[aria-selected="true"] { background: var(--ink); color: var(--chalk); }
+  .chiprow { display: flex; gap: 8px; margin-top: 13px; overflow-x: auto;
+             scrollbar-width: none; }
+  .chiprow::-webkit-scrollbar { display: none; }
+  .chip.inert { cursor: default; color: #5F6269; }
+
+  /* ---- grid ---- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 13px; row-gap: 22px;
+          padding-top: 13px; overflow: hidden; }
+  .plate { width: 100%; aspect-ratio: 1; border-radius: var(--r-plate);
+           border: var(--hairline) solid var(--line); background: var(--chalk);
+           overflow: hidden; display: block; }
+  .cardname { margin-top: 8px; height: 42px; overflow: hidden; }
+  .meta { margin-top: 5px; height: 15px; display: flex; align-items: center;
+          justify-content: space-between; }
+  .pal  { display: flex; gap: 3px; }
+  .pal i { width: 13px; height: 13px; border-radius: 2px; display: block;
+           box-shadow: inset 0 0 0 1px rgba(20,21,26,.08); }
+
+  /* ---- floating CTA ---- */
+  .cta { position: absolute; left: 50%; transform: translateX(-50%); bottom: 46px;
+         height: 52px; border-radius: var(--r-pill); background: var(--ink);
+         color: var(--chalk); display: flex; align-items: center; gap: 8px;
+         padding: 0 22px; border: 0; cursor: pointer; }
+  .cta.bar { left: 22px; right: 22px; transform: none; width: auto;
+             justify-content: center; box-shadow: none; }
+
+  /* ---- empty state ---- */
+  .fields { margin-top: 13px; }
+  .frow  { display: flex; align-items: center; height: 30px; gap: 13px; }
+  .frow + .frow { border-top: var(--hairline) solid var(--line); }
+  .flabel{ width: 88px; flex: none; }
+  .sq    { width: 13px; height: 13px; border: var(--hairline) solid var(--line);
+           border-radius: 2px; }
+  .dashbar { width: 120px; height: 3px; border-radius: 2px; background: var(--line); }
+
+  /* ---- viewfinder ---- */
+  .vf      { position: absolute; inset: 0; background: #23262B; }
+  .vf-sub  { position: absolute; left: 50%; top: 46%; transform: translate(-50%,-50%); }
+  /* Brackets frame the subject only — they must clear the control row at the
+     bottom, or the capture affordances read as part of the reticle. */
+  .brack   { position: absolute; inset: 140px 46px 210px; }
+  .brack i { position: absolute; width: 30px; height: 30px; border: 2px solid rgba(255,255,255,.92); }
+  .brack i:nth-child(1){ top:0; left:0; border-right:0; border-bottom:0; border-radius: 8px 0 0 0; }
+  .brack i:nth-child(2){ top:0; right:0; border-left:0; border-bottom:0; border-radius: 0 8px 0 0; }
+  .brack i:nth-child(3){ bottom:0; left:0; border-right:0; border-top:0; border-radius: 0 0 0 8px; }
+  .brack i:nth-child(4){ bottom:0; right:0; border-left:0; border-top:0; border-radius: 0 0 8px 0; }
+  .badge   { display: inline-flex; align-items: center; gap: 7px; height: 30px;
+             padding: 0 13px; border-radius: var(--r-pill);
+             background: rgba(20,21,26,.62); color: #fff;
+             border: var(--hairline) solid rgba(255,255,255,.22); }
+  .shutter { width: 72px; height: 72px; border-radius: 999px; background: var(--chalk);
+             border: 0; cursor: pointer; box-shadow: 0 0 0 4px rgba(255,255,255,.28); }
+  .vfbtn   { width: 52px; height: 52px; border-radius: 999px; background: rgba(255,255,255,.14);
+             border: var(--hairline) solid rgba(255,255,255,.22); color: #fff; cursor: pointer;
+             display: flex; align-items: center; justify-content: center; }
+
+  /* ---- durometer ---- */
+  .durowrap { padding-top: 22px; }
+  .duro { width: 340px; height: 88px; margin: 0 auto; position: relative;
+          display: flex; align-items: flex-end; touch-action: none; cursor: pointer; }
+  .duro .slot10 { width: 34px; display: flex; align-items: flex-end; justify-content: center; }
+  .duro b { display: block; background: var(--ink); }
+  .duro b.off { background: #74777E; }
+  .duro-hit { position: absolute; left: 0; right: 0; top: -12px; bottom: -12px; }
+  .readout { display: flex; align-items: baseline; justify-content: space-between; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .duro b { transition: height .28s cubic-bezier(.32,.72,0,1),
+                          width .28s cubic-bezier(.32,.72,0,1),
+                          border-radius .28s cubic-bezier(.32,.72,0,1); }
+  }
+</style>
+
+<div class="page">
+  <header class="page-head">
+    <div class="M1 dim" style="margin-bottom:13px">Squish Index &middot; Visual target &middot; Milestone 1</div>
+    <h1>Four screens, one locked palette</h1>
+    <p>Reconstructed from <b>SPEC.md</b> §2/§3 and <b>Design/UX-SPEC.md</b>. Every colour on
+       screen comes out of a specimen photograph — the chrome itself has none, by design.
+       The durometer on screen 4 is live: drag it.</p>
+  </header>
+
+  <div class="rack">
+
+    <!-- ============ SCREEN 1 — SHELF / GRID ============ -->
+    <div class="slot">
+      <div class="cap"><b>01</b><span>Shelf / Grid</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="D2">Squish Index</div>
+            <div class="stat M2"><span class="ink">06</span><span class="M1 dim"> Specimens &nbsp;&middot;&nbsp; Avg squish </span><span class="ink">6.2</span></div>
+          </div>
+          <div class="mx band">
+            <div class="seg" role="tablist">
+              <button role="tab" aria-selected="true">Grid</button>
+              <button role="tab" aria-selected="false">Shelf</button>
+              <button role="tab" aria-selected="false">Stats</button>
+            </div>
+            <div class="chiprow">
+              <span class="chip">Newest <svg width="9" height="6" viewBox="0 0 9 6" aria-hidden="true"><path d="M1 1l3.5 3.5L8 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></span>
+              <span class="chip">Colour <b class="chip-badge">2</b></span>
+              <span class="chip">Form</span>
+            </div>
+          </div>
+          <div class="mx grid" id="grid1"></div>
+        </div>
+        <button class="cta shadow-cta">
+          <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 1v13M1 7.5h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span class="B2">Photograph</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN 2 — EMPTY STATE ============ -->
+    <div class="slot">
+      <div class="cap"><b>02</b><span>Empty state</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="D2">Squish Index</div>
+            <div class="stat M1 dim">No specimens yet</div>
+          </div>
+          <div class="mx band">
+            <div class="seg" role="tablist">
+              <button role="tab" aria-selected="true">Grid</button>
+              <button role="tab" aria-selected="false" disabled style="opacity:.35">Shelf</button>
+              <button role="tab" aria-selected="false" disabled style="opacity:.35">Stats</button>
+            </div>
+          </div>
+          <div class="mx" style="padding-top:22px">
+            <div class="M1 dim">Specimen record &middot; Blank</div>
+            <div style="margin-top:13px;width:200px;height:200px;border-radius:24px;
+                        border:var(--hairline) solid var(--line);background:var(--chalk)"></div>
+            <div class="fields">
+              <div class="frow"><span class="M1 flabel dim">Name</span><span class="dashbar"></span></div>
+              <div class="frow"><span class="M1 flabel dim">Squish</span><span class="M1" style="color:var(--line)">- -</span></div>
+              <div class="frow"><span class="M1 flabel dim">Palette</span><span class="pal"><i class="sq"></i><i class="sq"></i><i class="sq"></i><i class="sq"></i></span></div>
+              <div class="frow"><span class="M1 flabel dim">Width</span><span class="M1" style="color:var(--line)">- - MM</span></div>
+              <div class="frow"><span class="M1 flabel dim">Form</span><span class="M1" style="color:var(--line)">&mdash;&mdash;</span></div>
+            </div>
+            <p class="B1" style="margin-top:13px;max-width:300px">Photograph a squishy and the
+               index fills this card in. Everything below the name is measured on your phone.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:13px">
+              <span class="chip inert">Subject mask</span>
+              <span class="chip inert">Colour palette</span>
+              <span class="chip inert">Silhouette</span>
+            </div>
+          </div>
+        </div>
+        <button class="cta bar"><span class="B2">Photograph the first one</span></button>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN 3 — CAPTURE ============ -->
+    <div class="slot">
+      <div class="cap"><b>03</b><span>Capture / viewfinder</span></div>
+      <div class="device dark">
+        <div class="vf">
+          <div class="vf-sub">
+            <svg width="196" height="196" viewBox="0 0 100 100" aria-hidden="true">
+              <path d="M50 9c19 0 34 12 34 29 0 9-4 15-4 22 0 10-12 20-30 20S20 70 20 60c0-7-4-13-4-22C16 21 31 9 50 9z" fill="#E8654A"/>
+              <path d="M35 33c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/>
+              <path d="M66 33c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/>
+            </svg>
+          </div>
+          <div class="brack"><i></i><i></i><i></i><i></i></div>
+
+          <div style="position:absolute;top:59px;left:0;right:0;display:flex;justify-content:center">
+            <span class="badge M1">No size data</span>
+          </div>
+          <div style="position:absolute;top:calc(96px + 30px);left:0;right:0;display:flex;justify-content:center">
+            <span class="M1" style="color:rgba(255,255,255,.72)">Subject locked</span>
+          </div>
+
+          <div style="position:absolute;left:22px;right:22px;bottom:34px;
+                      display:flex;align-items:center;justify-content:space-between">
+            <button class="vfbtn" aria-label="Choose from library">
+              <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden="true"><rect x="1.5" y="3.5" width="16" height="12" rx="2.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M3 13l4-4 3 3 3-3 3 3" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+            </button>
+            <button class="shutter" aria-label="Capture"></button>
+            <button class="vfbtn" aria-label="Use reference card">
+              <svg width="19" height="19" viewBox="0 0 19 19" aria-hidden="true"><rect x="1.5" y="4.5" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M1.5 8h16" stroke="currentColor" stroke-width="1.5"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ SCREEN 4 — NAME & DUROMETER ============ -->
+    <div class="slot">
+      <div class="cap"><b>04</b><span>Name &amp; durometer &middot; live</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx" style="display:flex;justify-content:space-between;align-items:center">
+            <span class="M1 dim">New specimen</span>
+            <span class="M1 dim">Cancel</span>
+          </div>
+
+          <div class="mx" style="padding-top:22px">
+            <div style="width:100%;aspect-ratio:1;border-radius:24px;
+                        border:var(--hairline) solid var(--line);background:var(--chalk);
+                        display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <svg width="230" height="230" viewBox="0 0 100 100" aria-hidden="true">
+                <path d="M50 9c19 0 34 12 34 29 0 9-4 15-4 22 0 10-12 20-30 20S20 70 20 60c0-7-4-13-4-22C16 21 31 9 50 9z" fill="#E8654A"/>
+                <path d="M35 33c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".9"/>
+                <path d="M66 33c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".9"/>
+              </svg>
+            </div>
+            <div class="D3" style="margin-top:22px">Ember Blob</div>
+            <div style="height:1px;background:var(--ink);margin-top:8px;width:100%"></div>
+            <div class="M1 dim" style="margin-top:8px">Name</div>
+          </div>
+
+          <div style="flex:1"></div>
+
+          <div class="mx durowrap" style="padding-bottom:34px">
+            <div class="readout">
+              <span class="M1 dim">Squish</span>
+              <span class="D1" id="duroNum">6</span>
+            </div>
+            <div class="duro" id="duro" role="slider" tabindex="0"
+                 aria-label="Squish level" aria-valuemin="1" aria-valuemax="10"
+                 aria-valuenow="6" aria-valuetext="6 of 10. Soft.">
+              <div class="duro-hit"></div>
+            </div>
+            <p class="B1" id="duroSentence" style="margin-top:22px;min-height:42px">
+              Soft. Folds around a thumb and recovers in about a second.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- specimens (stand-in photography) ---------- */
+  var SPECIMENS = [
+    { name: "Ember Blob",  squish: 6, pal: ["#E8654A","#F2A07B","#B03A28","#FBD9C8"] },
+    { name: "Storm Loaf",  squish: 4, pal: ["#8FA3B8","#5C7189","#C7D3DE","#3A4A5C"] },
+    { name: "Mint Bun",    squish: 9, pal: ["#B8E0C8","#7FC49B","#4E9A72","#E3F2E9"] },
+    { name: "Cloud Pig",   squish: 8, pal: ["#F4C2CE","#E894A8","#C25E77","#FAE4EA"] },
+    { name: "Slate Duck",  squish: 3, pal: ["#E8C86A","#C7A23F","#F4E3B0","#6E6A5C"] },
+    { name: "Peach Cat",   squish: 7, pal: ["#F2B49A","#E88C6A","#C9573C","#F7E3D6"] }
+  ];
+
+  var BLOBS = [
+    "M50 9c19 0 34 12 34 29 0 9-4 15-4 22 0 10-12 20-30 20S20 70 20 60c0-7-4-13-4-22C16 21 31 9 50 9z",
+    "M50 12c22 0 33 14 33 30S69 80 50 80 17 58 17 42 28 12 50 12z",
+    "M50 10c20 0 32 15 32 32 0 14-14 28-32 28S18 56 18 42c0-17 12-32 32-32z"
+  ];
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+  function photo(spec, i) {
+    return '<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">' +
+      '<path d="' + BLOBS[i % BLOBS.length] + '" fill="' + spec.pal[0] + '"/>' +
+      '<path d="M36 34c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/>' +
+      '<path d="M65 34c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/>' +
+      '</svg>';
+  }
+
+  var grid = document.getElementById("grid1");
+  if (grid) {
+    grid.innerHTML = SPECIMENS.map(function (s, i) {
+      return '<div>' +
+        '<div class="plate">' + photo(s, i) + '</div>' +
+        '<div class="cardname D4">' + s.name + '</div>' +
+        '<div class="meta">' +
+          '<span class="pal">' + s.pal.map(function (c) {
+            return '<i style="background:' + c + '"></i>';
+          }).join("") + '</span>' +
+          '<span class="M2 ink">' + pad(s.squish) + '</span>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  /* ---------- durometer — UX-SPEC §5.1 geometry, exactly ---------- */
+  var SENTENCES = [
+    ["Rigid",               "A thumb leaves no impression."],
+    ["Firm",                "Gives at the surface, returns instantly."],
+    ["Dense",               "Compresses under steady pressure and springs straight back."],
+    ["Resilient",           "Presses in about a third of the way and recovers at once."],
+    ["Even",                "Compresses about halfway. Returns without delay."],
+    ["Soft",                "Folds around a thumb and recovers in about a second."],
+    ["Slack",               "Squashes nearly flat under light pressure. Comes back slowly."],
+    ["Deep",                "Collapses almost completely and rises again over a few seconds."],
+    ["Slow rise",           "Holds the print of a thumb for five to ten seconds."],
+    ["Barely holds shape",  "Flows in the hand and re-forms on its own."]
+  ];
+
+  var TRACK = 340, SLOT = TRACK / 10, H = 88, N = 10;
+
+  function hBase(i) { return H - (i - 1) * (22 / 9); }          // the lean
+  function wOf(k)   { return 12 + 14 * k; }                     // 12 -> 26
+  function hOf(i,k) { return hBase(i) * (12 / wOf(k)); }        // area conserved
+  function rOf(i,k) { return Math.min(3 + 10 * k, wOf(k) / 2, hOf(i,k) / 2); }
+
+  var duro = document.getElementById("duro");
+  if (!duro) return;
+  var numEl = document.getElementById("duroNum");
+  var sentEl = document.getElementById("duroSentence");
+  var level = 6;
+
+  var slots = [];
+  for (var i = 1; i <= N; i++) {
+    var d = document.createElement("div");
+    d.className = "slot10";
+    var b = document.createElement("b");
+    d.appendChild(b);
+    duro.appendChild(d);
+    slots.push(b);
+  }
+
+  function render() {
+    var k = (level - 1) / 9;
+    for (var i = 1; i <= N; i++) {
+      var on = i <= level;
+      var kk = on ? k : 0;                 // unfilled bars stay at k = 0
+      var b = slots[i - 1];
+      b.style.width = wOf(kk).toFixed(2) + "px";
+      b.style.height = hOf(i, kk).toFixed(2) + "px";
+      b.style.borderRadius = rOf(i, kk).toFixed(2) + "px";
+      b.className = on ? "" : "off";
+    }
+    numEl.textContent = String(level);
+    var s = SENTENCES[level - 1];
+    sentEl.textContent = s[0] + ". " + s[1];
+    duro.setAttribute("aria-valuenow", String(level));
+    duro.setAttribute("aria-valuetext", level + " of 10. " + s[0] + ".");
+  }
+
+  function levelAtX(x) {                    // UX-SPEC §5.3
+    return Math.min(10, Math.max(1, Math.floor(x / SLOT) + 1));
+  }
+
+  function setFromEvent(e) {
+    var rect = duro.getBoundingClientRect();
+    var next = levelAtX(e.clientX - rect.left);
+    if (next !== level) { level = next; render(); }   // .selection haptic here on iOS
+  }
+
+  var dragging = false;
+  duro.addEventListener("pointerdown", function (e) {
+    dragging = true; duro.setPointerCapture(e.pointerId); setFromEvent(e); e.preventDefault();
+  });
+  duro.addEventListener("pointermove", function (e) { if (dragging) setFromEvent(e); });
+  duro.addEventListener("pointerup",     function () { dragging = false; });
+  duro.addEventListener("pointercancel", function () { dragging = false; });
+
+  duro.addEventListener("keydown", function (e) {     // adjustable trait parity
+    var d = (e.key === "ArrowRight" || e.key === "ArrowUp") ? 1
+          : (e.key === "ArrowLeft"  || e.key === "ArrowDown") ? -1 : 0;
+    if (!d) return;
+    var next = Math.min(10, Math.max(1, level + d));
+    if (next !== level) { level = next; render(); }
+    e.preventDefault();
+  });
+
+  render();
+})();
+</script>
