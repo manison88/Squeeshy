@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Assemble squish-index-mockups.html from its parts.
+"""Assemble a self-contained mockup page from its parts.
 
-The mockups must be a single self-contained file: viewable offline, and
-publishable as an artifact where a strict CSP blocks every external host.
-So the typefaces are inlined as base64 data URIs rather than linked.
+The output must be a single file: viewable offline, and publishable as an
+artifact where a strict CSP blocks every external host. So the typefaces are
+inlined as base64 data URIs rather than linked.
 
-    python3 Design/mockups/build.py
+    python3 Design/mockups/build.py                     # -> squish-index-mockups.html
+    python3 Design/mockups/build.py durometer-options   # -> durometer-options.html
 
-Inputs   Design/mockups/{fonts/*.woff2, tokens.css, body.html}
-Output   squish-index-mockups.html  (repo root, per SPEC.md kickoff)
+Inputs   Design/mockups/{fonts/*.woff2, tokens.css, <name>.body.html}
+Output   <name>.html at the repo root (per SPEC.md kickoff)
 """
 
 import base64
@@ -17,7 +18,12 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-OUT = ROOT / "squish-index-mockups.html"
+
+# page slug -> (body file, <title>)
+PAGES = {
+    "squish-index-mockups": ("body.html", "Squish Index"),
+    "durometer-options": ("durometer-options.body.html", "Three Durometers"),
+}
 
 # (file, css family name, font-weight descriptor)
 FONTS = [
@@ -43,17 +49,28 @@ def font_face_css() -> str:
     return "\n".join(rules)
 
 
-def main() -> None:
+def build(slug: str, faces: str) -> None:
+    body_name, title = PAGES[slug]
     tokens = (HERE / "tokens.css").read_text()
-    body = (HERE / "body.html").read_text()
+    body = (HERE / body_name).read_text()
 
     html = (
-        "<title>Squish Index</title>\n"
-        "<style>\n" + font_face_css() + "\n\n" + tokens + "\n</style>\n" + body
+        f"<title>{title}</title>\n"
+        "<style>\n" + faces + "\n\n" + tokens + "\n</style>\n" + body
     )
-    OUT.write_text(html)
-    kb = len(html.encode()) / 1024
-    print(f"wrote {OUT.relative_to(ROOT)}  ({kb:.0f} KB)")
+    out = ROOT / f"{slug}.html"
+    out.write_text(html)
+    print(f"wrote {out.relative_to(ROOT)}  ({len(html.encode()) / 1024:.0f} KB)")
+
+
+def main() -> None:
+    slugs = sys.argv[1:] or ["squish-index-mockups"]
+    unknown = [s for s in slugs if s not in PAGES]
+    if unknown:
+        sys.exit(f"unknown page(s): {', '.join(unknown)}\nknown: {', '.join(PAGES)}")
+    faces = font_face_css()  # encode once, reuse across pages
+    for slug in slugs:
+        build(slug, faces)
 
 
 if __name__ == "__main__":

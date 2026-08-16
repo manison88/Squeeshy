@@ -1,0 +1,338 @@
+<!--
+  Durometer — three directions.
+
+  Prompted by a Mobbin reference (pushr, "new schedule"): a tick ruler with a
+  lens falloff around the active value and a floating value pill.
+
+  A  Compression   — SPEC.md §2 as written. Bars compress as value rises.
+  B  Ruler         — the reference applied directly. Ticks + pill, no compression.
+  C  Hybrid        — compression kept, reference's finish adopted.
+
+  All three are live. Drag or tap any of them. Arrow keys work too.
+  Assembled by build.py — edit this file, not durometer-options.html.
+-->
+
+<style>
+  .page      { padding: 34px 22px 56px; max-width: 1400px; margin: 0 auto; }
+  .page-head { max-width: 640px; margin-bottom: 34px; }
+  .page-head h1 { font-family: var(--display); font-weight: 800; font-size: 34px;
+                  letter-spacing: -0.02em; margin-bottom: 8px; text-wrap: balance; }
+  .page-head p  { font-family: var(--body); font-size: 15px; line-height: 21px; color: #5F6269; }
+
+  .D1 { font-family: var(--display); font-weight: 800; font-size: 44px; letter-spacing: -0.02em; line-height: 1; }
+  .B1 { font-family: var(--body); font-weight: 400; font-size: 15px; line-height: 21px; }
+  .M1 { font-family: var(--data); font-weight: 400; font-size: 10px;
+        letter-spacing: 0.16em; text-transform: uppercase; }
+  .M2 { font-family: var(--data); font-weight: 500; font-size: 12px; letter-spacing: 0.04em; }
+  .dim { color: #5F6269; }
+
+  .opts { display: flex; flex-wrap: wrap; gap: 22px; align-items: flex-start; }
+  .opt  { width: 393px; background: var(--putty); border: var(--hairline) solid var(--line);
+          border-radius: var(--r-card); padding: 22px; }
+  .opt h2 { font-family: var(--display); font-weight: 600; font-size: 24px;
+            letter-spacing: -0.02em; margin: 8px 0 5px; }
+  .verdict { margin-top: 22px; padding-top: 13px; border-top: var(--hairline) solid var(--line); }
+  .verdict dt { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+                text-transform: uppercase; color: #5F6269; margin-bottom: 3px; }
+  .verdict dd { font-family: var(--body); font-size: 13px; line-height: 19px; margin-bottom: 8px; }
+
+  .stage { position: relative; margin-top: 22px; }
+
+  /* ---- shared bar/tick styling ---- */
+  .track { width: 340px; margin: 0 auto; position: relative; touch-action: none;
+           cursor: pointer; display: block; }
+  .track:focus-visible { outline: 2px solid var(--ink); outline-offset: 6px; border-radius: 6px; }
+
+  .bars { height: 88px; display: flex; align-items: flex-end; }
+  .bars .s { width: 34px; display: flex; align-items: flex-end; justify-content: center; }
+  .bars b  { display: block; background: var(--ink); }
+  .bars b.off { background: #74777E; }
+
+  .ticks { height: 72px; position: relative; }
+  .ticks i { position: absolute; bottom: 0; display: block; background: #74777E;
+             border-radius: 999px; transform: translateX(-50%); }
+  .ticks i.on { background: var(--ink); }
+
+  /* floating value pill — the reference's readout */
+  .pill { position: absolute; top: 0; transform: translateX(-50%);
+          background: #E6E4DE; border-radius: 999px; padding: 7px 15px;
+          font-family: var(--display); font-weight: 800; font-size: 20px;
+          letter-spacing: -0.02em; line-height: 1; white-space: nowrap; }
+  .pillrow { height: 40px; position: relative; }
+
+  /* measurement baseline for the hybrid */
+  .baseline { margin-top: 8px; height: 9px; position: relative;
+              border-top: var(--hairline) solid var(--line); }
+  .baseline i { position: absolute; top: 0; width: 1px; height: 5px;
+                background: var(--line); transform: translateX(-50%); }
+  .baseline i.maj { height: 9px; }
+
+  .sentence { margin-top: 22px; min-height: 42px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .bars b, .ticks i, .pill {
+      transition: height .28s cubic-bezier(.32,.72,0,1),
+                  width .28s cubic-bezier(.32,.72,0,1),
+                  border-radius .28s cubic-bezier(.32,.72,0,1),
+                  left .28s cubic-bezier(.32,.72,0,1),
+                  background-color .18s linear;
+    }
+  }
+</style>
+
+<div class="page">
+  <header class="page-head">
+    <div class="M1 dim" style="margin-bottom:13px">Squish Index &middot; Durometer &middot; Three directions</div>
+    <h1>Which one measures squish?</h1>
+    <p>All three are live — drag them, or use arrow keys. <b>A</b> is
+       <b>SPEC.md</b> §2 as written. <b>B</b> applies the tick-ruler reference directly.
+       <b>C</b> keeps the compression and takes the reference's finish.</p>
+  </header>
+
+  <div class="opts">
+
+    <!-- ============ A — COMPRESSION ============ -->
+    <section class="opt">
+      <div class="M1 dim">Option A</div>
+      <h2>Compression</h2>
+      <p class="B1 dim" style="font-size:13px;line-height:19px">SPEC.md §2, unchanged.</p>
+
+      <div class="stage">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span class="M1 dim">Squish</span>
+          <span class="D1" id="aNum">6</span>
+        </div>
+        <div class="track bars" id="aTrack" role="slider" tabindex="0"
+             aria-label="Squish level" aria-valuemin="1" aria-valuemax="10" aria-valuenow="6"></div>
+        <p class="B1 sentence" id="aSent"></p>
+      </div>
+
+      <dl class="verdict">
+        <dt>Keeps</dt>
+        <dd>The bars perform the property. Area is conserved exactly, so the material
+            changes shape, not mass.</dd>
+        <dt>Costs</dt>
+        <dd>The readout sits in the corner, away from the thumb. Reads as a chart
+            more than an instrument.</dd>
+      </dl>
+    </section>
+
+    <!-- ============ B — RULER ============ -->
+    <section class="opt">
+      <div class="M1 dim">Option B</div>
+      <h2>Ruler</h2>
+      <p class="B1 dim" style="font-size:13px;line-height:19px">The reference, applied directly.</p>
+
+      <div class="stage">
+        <div class="M1 dim" style="margin-bottom:5px">Squish</div>
+        <div class="pillrow"><span class="pill" id="bPill">6</span></div>
+        <div class="track ticks" id="bTrack" role="slider" tabindex="0"
+             aria-label="Squish level" aria-valuemin="1" aria-valuemax="10" aria-valuenow="6"></div>
+        <p class="B1 sentence" id="bSent"></p>
+      </div>
+
+      <dl class="verdict">
+        <dt>Keeps</dt>
+        <dd>The readout rides the thumb. Ten majors with minor ticks between give it
+            the density of a real gauge.</dd>
+        <dt>Costs</dt>
+        <dd>Measures position, not material. A ruler would read the same on a
+            volume control — nothing about it says squish.</dd>
+      </dl>
+    </section>
+
+    <!-- ============ C — HYBRID ============ -->
+    <section class="opt">
+      <div class="M1 dim">Option C</div>
+      <h2>Hybrid</h2>
+      <p class="B1 dim" style="font-size:13px;line-height:19px">Compression, with the reference's finish.</p>
+
+      <div class="stage">
+        <div class="M1 dim" style="margin-bottom:5px">Squish</div>
+        <div class="pillrow"><span class="pill" id="cPill">6</span></div>
+        <div class="track bars" id="cTrack" role="slider" tabindex="0"
+             aria-label="Squish level" aria-valuemin="1" aria-valuemax="10" aria-valuenow="6"></div>
+        <div class="baseline" id="cBase"></div>
+        <p class="B1 sentence" id="cSent"></p>
+      </div>
+
+      <dl class="verdict">
+        <dt>Keeps</dt>
+        <dd>Compression survives intact. The pill rides the thumb, and the ruled
+            baseline supplies the instrument register.</dd>
+        <dt>Costs</dt>
+        <dd>Two readouts competing for the same glance — the pill and the bar
+            boundary both encode the value.</dd>
+      </dl>
+    </section>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SENTENCES = [
+    ["Rigid",              "A thumb leaves no impression."],
+    ["Firm",               "Gives at the surface, returns instantly."],
+    ["Dense",              "Compresses under steady pressure and springs straight back."],
+    ["Resilient",          "Presses in about a third of the way and recovers at once."],
+    ["Even",               "Compresses about halfway. Returns without delay."],
+    ["Soft",               "Folds around a thumb and recovers in about a second."],
+    ["Slack",              "Squashes nearly flat under light pressure. Comes back slowly."],
+    ["Deep",               "Collapses almost completely and rises again over a few seconds."],
+    ["Slow rise",          "Holds the print of a thumb for five to ten seconds."],
+    ["Barely holds shape", "Flows in the hand and re-forms on its own."]
+  ];
+
+  var TRACK = 340, SLOT = 34, N = 10;
+
+  /* ---- UX-SPEC §5.1 geometry ---- */
+  function hBase(i) { return 88 - (i - 1) * (22 / 9); }
+  function wOf(k)   { return 12 + 14 * k; }
+  function hOf(i,k) { return hBase(i) * (12 / wOf(k)); }
+  function rOf(i,k) { return Math.min(3 + 10 * k, wOf(k) / 2, hOf(i,k) / 2); }
+
+  function sentence(el, level) {
+    var s = SENTENCES[level - 1];
+    el.textContent = s[0] + ". " + s[1];
+  }
+
+  function wire(track, onSet, levelFromX) {
+    var dragging = false;
+    function fromEvent(e) {
+      var r = track.getBoundingClientRect();
+      onSet(levelFromX(e.clientX - r.left));
+    }
+    track.addEventListener("pointerdown", function (e) {
+      dragging = true; track.setPointerCapture(e.pointerId); fromEvent(e); e.preventDefault();
+    });
+    track.addEventListener("pointermove",   function (e) { if (dragging) fromEvent(e); });
+    track.addEventListener("pointerup",     function () { dragging = false; });
+    track.addEventListener("pointercancel", function () { dragging = false; });
+    track.addEventListener("keydown", function (e) {
+      var d = (e.key === "ArrowRight" || e.key === "ArrowUp") ? 1
+            : (e.key === "ArrowLeft"  || e.key === "ArrowDown") ? -1 : 0;
+      if (!d) return;
+      onSet(null, d);
+      e.preventDefault();
+    });
+  }
+
+  function clamp(v) { return Math.min(10, Math.max(1, v)); }
+
+  /* ================= A — compression ================= */
+  (function () {
+    var track = document.getElementById("aTrack");
+    var num = document.getElementById("aNum"), sent = document.getElementById("aSent");
+    var level = 6, bars = [];
+    for (var i = 1; i <= N; i++) {
+      var s = document.createElement("div"); s.className = "s";
+      var b = document.createElement("b"); s.appendChild(b); track.appendChild(s); bars.push(b);
+    }
+    function render() {
+      var k = (level - 1) / 9;
+      for (var i = 1; i <= N; i++) {
+        var on = i <= level, kk = on ? k : 0, b = bars[i - 1];
+        b.style.width = wOf(kk).toFixed(2) + "px";
+        b.style.height = hOf(i, kk).toFixed(2) + "px";
+        b.style.borderRadius = rOf(i, kk).toFixed(2) + "px";
+        b.className = on ? "" : "off";
+      }
+      num.textContent = String(level);
+      sentence(sent, level);
+      track.setAttribute("aria-valuenow", String(level));
+      track.setAttribute("aria-valuetext", level + " of 10. " + SENTENCES[level - 1][0] + ".");
+    }
+    wire(track,
+      function (v, d) {
+        var next = clamp(d ? level + d : v);
+        if (next !== level) { level = next; render(); }
+      },
+      function (x) { return clamp(Math.floor(x / SLOT) + 1); });
+    render();
+  })();
+
+  /* ================= B — ruler ================= */
+  /* 10 majors, 3 minors between each -> 37 ticks. Major every 4th index, so
+     tick index t maps to level t/4 + 1. A lens bulge lifts ticks near the
+     active one, the way the reference lifts ticks near its centre. */
+  (function () {
+    var track = document.getElementById("bTrack");
+    var pill = document.getElementById("bPill"), sent = document.getElementById("bSent");
+    var TICKS = 37, STEP = TRACK / (TICKS - 1), level = 6, els = [];
+    for (var t = 0; t < TICKS; t++) {
+      var i = document.createElement("i");
+      i.style.left = (t * STEP) + "px";
+      track.appendChild(i); els.push(i);
+    }
+    function render() {
+      var at = (level - 1) * 4;
+      for (var t = 0; t < TICKS; t++) {
+        var maj = t % 4 === 0;
+        var d = Math.abs(t - at);
+        var lens = 1 + 0.55 * Math.max(0, 1 - d / 6);      // bulge near the thumb
+        var base = maj ? 40 : 24;
+        var el = els[t];
+        el.style.width = (maj ? 3 : 2) + "px";
+        el.style.height = (base * lens).toFixed(2) + "px";
+        el.className = t <= at ? "on" : "";
+      }
+      pill.textContent = String(level);
+      pill.style.left = Math.min(TRACK - 26, Math.max(26, at * STEP)) + "px";
+      sentence(sent, level);
+      track.setAttribute("aria-valuenow", String(level));
+      track.setAttribute("aria-valuetext", level + " of 10. " + SENTENCES[level - 1][0] + ".");
+    }
+    wire(track,
+      function (v, d) {
+        var next = clamp(d ? level + d : v);
+        if (next !== level) { level = next; render(); }
+      },
+      function (x) { return clamp(Math.round(x / (TRACK / 9)) + 1); });
+    render();
+  })();
+
+  /* ================= C — hybrid ================= */
+  (function () {
+    var track = document.getElementById("cTrack");
+    var pill = document.getElementById("cPill"), sent = document.getElementById("cSent");
+    var base = document.getElementById("cBase");
+    var level = 6, bars = [];
+    for (var i = 1; i <= N; i++) {
+      var s = document.createElement("div"); s.className = "s";
+      var b = document.createElement("b"); s.appendChild(b); track.appendChild(s); bars.push(b);
+    }
+    for (var t = 0; t < 37; t++) {                       // ruled measurement baseline
+      var tick = document.createElement("i");
+      tick.style.left = (t * (TRACK / 36)) + "px";
+      if (t % 4 === 0) tick.className = "maj";
+      base.appendChild(tick);
+    }
+    function render() {
+      var k = (level - 1) / 9;
+      for (var i = 1; i <= N; i++) {
+        var on = i <= level, kk = on ? k : 0, b = bars[i - 1];
+        b.style.width = wOf(kk).toFixed(2) + "px";
+        b.style.height = hOf(i, kk).toFixed(2) + "px";
+        b.style.borderRadius = rOf(i, kk).toFixed(2) + "px";
+        b.className = on ? "" : "off";
+      }
+      pill.textContent = String(level);
+      var cx = (level - 1) * SLOT + SLOT / 2;            // centre of the active slot
+      pill.style.left = Math.min(TRACK - 26, Math.max(26, cx)) + "px";
+      sentence(sent, level);
+      track.setAttribute("aria-valuenow", String(level));
+      track.setAttribute("aria-valuetext", level + " of 10. " + SENTENCES[level - 1][0] + ".");
+    }
+    wire(track,
+      function (v, d) {
+        var next = clamp(d ? level + d : v);
+        if (next !== level) { level = next; render(); }
+      },
+      function (x) { return clamp(Math.floor(x / SLOT) + 1); });
+    render();
+  })();
+})();
+</script>
