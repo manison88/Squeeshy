@@ -1,0 +1,399 @@
+<title>Squish Index Screens</title>
+
+<style>
+  /* ============================================================
+     Typefaces — SPEC.md §2. Inlined, because the artifact CSP
+     blocks font hosts and a silent fallback would misrepresent
+     the design.
+     ============================================================ */
+  @font-face { font-family: "Bricolage Grotesque"; src: __BRIC__;
+               font-weight: 200 800; font-display: block; }
+  @font-face { font-family: "Inter"; src: __INTER__;
+               font-weight: 100 900; font-display: block; }
+  @font-face { font-family: "DM Mono"; src: __MONO400__;
+               font-weight: 400; font-display: block; }
+  @font-face { font-family: "DM Mono"; src: __MONO500__;
+               font-weight: 500; font-display: block; }
+
+  /* ============================================================
+     Tokens — locked. The UI has no colour of its own: every
+     colour on a screen comes out of a specimen.
+     ============================================================ */
+  :root {
+    --putty: #F1F0EC;
+    --ink:   #14151A;
+    --soft:  #74777E;   /* graphics only — 3.93:1 on putty */
+    --dim:   #5F6269;   /* text-safe secondary — 5.36:1 */
+    --line:  #DDDBD4;
+    --chalk: #FFFFFF;
+    --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --body: "Inter", ui-sans-serif, system-ui, sans-serif;
+    --data: "DM Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --r-plate: 19px; --r-plate-lg: 24px; --r-sheet: 26px; --r-pill: 999px;
+    --hairline: 1px;
+    color-scheme: light;
+  }
+
+  /* The app ships light-only and deliberately: the locked palette has no
+     dark variant, and inverting putty and ink would be a redesign. This
+     page holds the same position, so every colour is painted explicitly
+     rather than inherited from the viewer's theme. */
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--putty); color: var(--ink);
+    font-family: var(--body); -webkit-font-smoothing: antialiased;
+  }
+  svg { display: block; }
+
+  /* ---------------- type ---------------- */
+  .D1 { font-family: var(--display); font-weight: 800; font-size: 44px;
+        letter-spacing: -0.02em; line-height: 1; }
+  .D2 { font-family: var(--display); font-weight: 800; font-size: 26px;
+        letter-spacing: -0.02em; line-height: 34px; }
+  .D3 { font-family: var(--display); font-weight: 600; font-size: 24px;
+        letter-spacing: -0.02em; line-height: 29px; }
+  .D4 { font-family: var(--display); font-weight: 600; font-size: 17px;
+        letter-spacing: -0.02em; line-height: 21px; }
+  .B1 { font-family: var(--body); font-weight: 400; font-size: 15px; line-height: 21px; }
+  .B2 { font-family: var(--body); font-weight: 600; font-size: 16px; }
+  .B3 { font-family: var(--body); font-weight: 400; font-size: 13px; line-height: 19px; }
+  .M1 { font-family: var(--data); font-weight: 400; font-size: 10px;
+        letter-spacing: 0.16em; text-transform: uppercase; }
+  .M2 { font-family: var(--data); font-weight: 500; font-size: 12px;
+        letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+  .dim { color: var(--dim); }
+  .ink { color: var(--ink); }
+  .faint { color: var(--line); }
+  b { font-weight: 600; }
+
+  /* ---------------- page chrome (not part of the app) ---------------- */
+  .page { max-width: 1740px; margin: 0 auto; padding: 56px 22px 90px; }
+  .masthead { max-width: 640px; display: flex; flex-direction: column; gap: 13px; }
+  .masthead h1 { font-family: var(--display); font-weight: 800; font-size: 44px;
+                 letter-spacing: -0.02em; line-height: 1.02; margin: 0;
+                 text-wrap: balance; }
+  .masthead p { margin: 0; max-width: 62ch; }
+  .kicker { display: flex; gap: 13px; align-items: baseline; flex-wrap: wrap; }
+
+  .facts { display: flex; flex-wrap: wrap; gap: 0; margin: 34px 0 0;
+           border-top: var(--hairline) solid var(--line); }
+  .fact { flex: 1 1 200px; padding: 13px 22px 13px 0; display: flex;
+          flex-direction: column; gap: 5px; }
+  .fact dt { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+             text-transform: uppercase; color: var(--dim); margin: 0; }
+  .fact dd { margin: 0; font-family: var(--body); font-size: 15px; line-height: 21px; }
+
+  .rack { display: flex; flex-wrap: wrap; gap: 34px; align-items: flex-start;
+          margin-top: 56px; overflow-x: auto; }
+  .slot { width: 393px; margin: 0; display: flex; flex-direction: column; gap: 13px; }
+  .cap { display: grid; grid-template-columns: 26px 1fr; gap: 3px 8px;
+         align-items: baseline; }
+  .cap .num { color: var(--ink); font-weight: 500; }
+  .cap .name { color: var(--ink); font-weight: 500; }
+  .cap .note { grid-column: 2; color: var(--dim); }
+
+  /* ---------------- device ---------------- */
+  .device { width: 393px; height: 852px; border-radius: 44px; overflow: hidden;
+            position: relative; background: var(--putty);
+            border: var(--hairline) solid var(--line); }
+  .device.dark { background: var(--ink); }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .safe-t { height: 59px; flex: none; }
+  .safe-b { height: 34px; flex: none; }
+  .spacer { flex: 1 1 auto; }
+  .mx { padding-left: 22px; padding-right: 22px; }
+  .rule { height: var(--hairline); background: var(--line); }
+  .stat { margin-top: 5px; }
+
+  /* ---------------- band ---------------- */
+  .band { padding-top: 22px; padding-bottom: 13px; }
+  .seg { display: flex; height: 36px; border: var(--hairline) solid var(--line);
+         border-radius: var(--r-pill); padding: 3px; gap: 3px; }
+  .seg button { flex: 1; border: 0; border-radius: var(--r-pill); background: none;
+                font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+                text-transform: uppercase; color: rgba(20,21,26,.62); cursor: pointer; }
+  .seg button[aria-selected="true"] { background: var(--ink); color: var(--chalk); }
+  .seg button[disabled] { color: rgba(116,119,126,.4); cursor: default; }
+  .chiprow { display: flex; gap: 8px; margin-top: 13px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; height: 30px;
+          padding: 0 13px; border-radius: var(--r-pill);
+          border: var(--hairline) solid var(--line); color: rgba(20,21,26,.62);
+          font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+          text-transform: uppercase; white-space: nowrap; }
+  .chip.off { color: rgba(116,119,126,.4); }
+  .chip.inert { color: var(--dim); }
+  .chipwrap { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+
+  /* ---------------- grid ---------------- */
+  .grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 13px;
+          row-gap: 22px; padding-top: 13px; }
+  .plate { width: 100%; aspect-ratio: 1; border-radius: var(--r-plate);
+           border: var(--hairline) solid var(--line); background: var(--chalk);
+           overflow: hidden; }
+  .cardname { margin-top: 8px; height: 42px; overflow: hidden; }
+  .meta { margin-top: 5px; height: 15px; display: flex; align-items: center;
+          justify-content: space-between; }
+  .pal { display: flex; gap: 3px; }
+  .pal i { width: 13px; height: 13px; border-radius: 3px; display: block;
+           box-shadow: inset 0 0 0 1px rgba(20,21,26,.08); }
+  .pal i.hollow { box-shadow: inset 0 0 0 1px var(--line); }
+
+  .cta { position: absolute; height: 52px; border: 0; border-radius: var(--r-pill);
+         background: var(--ink); color: var(--chalk); display: flex;
+         align-items: center; justify-content: center; gap: 8px; padding: 0 22px;
+         cursor: pointer; }
+  .cta.corner { right: 22px; bottom: 56px;
+                box-shadow: 0 8px 18px rgba(20,21,26,.16), 0 1px 3px rgba(20,21,26,.10); }
+  .cta.bar { left: 22px; right: 22px; bottom: 56px; }
+  .cta::before { content: ""; width: 15px; height: 12px; border-radius: 3px;
+                 border: 1.5px solid currentColor; }
+
+  /* ---------------- empty state ---------------- */
+  .blank-plate { width: 240px; height: 240px; margin-top: 13px;
+                 border-radius: var(--r-plate-lg); background: var(--chalk);
+                 border: var(--hairline) solid var(--line); }
+  .fields { margin-top: 22px; }
+  .frow { display: flex; align-items: center; height: 32px; gap: 13px; }
+  .frow + .frow { border-top: var(--hairline) solid var(--line); }
+  .flabel { width: 88px; flex: none; }
+  .flabel.wide { width: 104px; }
+  .dashbar { width: 120px; height: 3px; border-radius: 2px; background: var(--line); }
+
+  /* ---------------- viewfinder ---------------- */
+  .vf { position: absolute; inset: 0; background: #22252A; }
+  .vf-grain { position: absolute; inset: 0;
+              background: radial-gradient(120% 80% at 50% 40%, #34383F 0%, #1C1F24 78%); }
+  .vf-sub { position: absolute; left: 50%; top: 44%; width: 210px; height: 210px;
+            transform: translate(-50%,-50%); opacity: .95; }
+  .vf-top { display: flex; align-items: center; justify-content: space-between;
+            padding-top: 13px; position: relative; }
+  .icon-btn { width: 44px; height: 44px; display: flex; align-items: center;
+              justify-content: center; color: var(--chalk); font-size: 22px;
+              line-height: 1; margin-left: -11px; }
+  .badge { display: inline-flex; align-items: center; height: 28px; padding: 0 13px;
+           border-radius: var(--r-pill); background: rgba(255,255,255,.12);
+           border: var(--hairline) solid rgba(255,255,255,.24); color: var(--chalk); }
+  .brack { position: absolute; left: 66px; right: 66px; top: 232px; height: 260px; }
+  .brack i { position: absolute; width: 26px; height: 26px;
+             border: 2px solid rgba(255,255,255,.9); }
+  .brack i:nth-child(1) { top: 0; left: 0; border-right: 0; border-bottom: 0; border-radius: 3px 0 0 0; }
+  .brack i:nth-child(2) { top: 0; right: 0; border-left: 0; border-bottom: 0; border-radius: 0 3px 0 0; }
+  .brack i:nth-child(3) { bottom: 0; left: 0; border-right: 0; border-top: 0; border-radius: 0 0 0 3px; }
+  .brack i:nth-child(4) { bottom: 0; right: 0; border-left: 0; border-top: 0; border-radius: 0 0 3px 0; }
+  .readout { position: absolute; top: 505px; left: 0; right: 0; text-align: center;
+             color: var(--chalk); }
+  .vf-bottom { position: absolute; left: 22px; right: 22px; bottom: 34px; height: 132px;
+               display: flex; align-items: center; justify-content: space-between; }
+  .shutter { width: 74px; height: 74px; border-radius: var(--r-pill);
+             border: 2px solid var(--chalk); display: block; position: relative; }
+  .shutter::after { content: ""; position: absolute; inset: 4px; border-radius: var(--r-pill);
+                    background: var(--chalk); }
+  .vfbtn { width: 44px; height: 44px; display: flex; align-items: center;
+           justify-content: center; color: var(--chalk); font-size: 20px; }
+  .vfbtn.ghost { visibility: hidden; }
+
+  /* ---------------- name & durometer ---------------- */
+  .navbar { height: 44px; display: flex; align-items: center; }
+  .big-plate { width: 260px; height: 260px; margin: 13px auto 0;
+               border-radius: var(--r-plate-lg); background: var(--chalk);
+               border: var(--hairline) solid var(--line); overflow: hidden;
+               position: relative; box-shadow: inset 0 0 0 1px var(--line); }
+  .field-rule { height: var(--hairline); background: var(--line); margin-top: 12px; }
+  .inset { padding-bottom: 13px; }
+  .inset-head { display: flex; align-items: baseline; justify-content: space-between;
+                height: 44px; padding-top: 22px; }
+  .duro-wrap { padding: 12px 0; margin-top: 13px; }
+  .duro { height: 88px; margin: 0 auto; display: flex; align-items: flex-end;
+          justify-content: center; }
+  .duro .dslot { display: flex; align-items: flex-end; justify-content: center; }
+  .duro b { display: block; }
+  .sentence { margin: 13px 0 0; min-height: 42px; }
+  .pill { display: flex; align-items: center; justify-content: center; width: 100%;
+          height: 52px; margin-top: 22px; border: 0; border-radius: var(--r-pill);
+          background: var(--ink); color: var(--chalk); cursor: pointer; }
+  #duroWrap { cursor: ew-resize; touch-action: none; }
+  #duroWrap:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px;
+                            border-radius: var(--r-pill); }
+  @media (prefers-reduced-motion: no-preference) {
+    .duro b { transition: width .26s cubic-bezier(.32,.72,0,1),
+                          height .26s cubic-bezier(.32,.72,0,1),
+                          border-radius .26s cubic-bezier(.32,.72,0,1); }
+  }
+
+  /* ---------------- measuring ---------------- */
+  .scanning::after { content: ""; position: absolute; inset: 0;
+                     border: var(--hairline) solid rgba(255,255,255,.9);
+                     border-radius: var(--r-plate-lg); pointer-events: none; }
+  .scanline { position: absolute; left: 0; right: 0; top: 58%; height: 2px;
+              background: rgba(255,255,255,.55); }
+  @media (prefers-reduced-motion: no-preference) {
+    .scanline { animation: sweep 1.1s ease-in-out infinite alternate; }
+    @keyframes sweep { from { top: 4%; } to { top: 94%; } }
+  }
+  .check { display: flex; align-items: center; gap: 13px; height: 44px; }
+  .check + .check { border-top: var(--hairline) solid var(--line); }
+  .box { width: 13px; height: 13px; border-radius: 2px;
+         border: var(--hairline) solid var(--line); display: block; flex: none; }
+  .box.done { background: var(--ink); border-color: var(--ink); }
+
+  /* ---------------- specimen sheet ---------------- */
+  .sheet-photo { position: absolute; left: 0; right: 0; top: 0; height: 400px;
+                 background: var(--chalk); display: flex; align-items: center;
+                 justify-content: center; }
+  .sheet-photo svg { width: 300px; height: 300px; }
+  .round-btn { width: 44px; height: 44px; border-radius: var(--r-pill);
+               background: rgba(255,255,255,.9); display: flex; align-items: center;
+               justify-content: center; font-size: 20px; color: var(--ink);
+               position: relative; box-shadow: inset 0 0 0 1px var(--line); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; height: 512px;
+           background: var(--putty); border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+           box-shadow: 0 -8px 32px rgba(20,21,26,.10); padding-bottom: 34px; }
+  .grabber { display: block; width: 36px; height: 5px; border-radius: 999px;
+             background: var(--line); margin: 8px auto 0; }
+  .sheet-duro { display: flex; align-items: flex-end; justify-content: space-between;
+                margin-top: 13px; }
+  .specs { margin-top: 22px; }
+  .srow { display: flex; align-items: baseline; gap: 13px; min-height: 32px;
+          padding: 5px 0; }
+  .srow + .srow { border-top: var(--hairline) solid var(--line); }
+  .propbar { display: flex; height: 22px; border-radius: var(--r-pill);
+             overflow: hidden; margin-top: 8px; }
+  .propbar span { display: block; height: 100%; }
+
+  /* ---------------- true scale ---------------- */
+  .ts { margin-top: 22px; }
+  .ts-row { display: flex; align-items: flex-end; gap: 13px; }
+  .ts-art { flex: none; }
+  .ts-meta { padding-bottom: 8px; }
+  .ticks { height: 10px; margin: 8px 0 22px;
+           background:
+             linear-gradient(var(--line), var(--line)) 0 0 / 100% 1px no-repeat,
+             repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px var(--tick, 24px)) 0 0 / 100% 5px no-repeat; }
+
+  /* ---------------- stats ---------------- */
+  .hist { display: flex; align-items: flex-end; justify-content: space-between;
+          height: 110px; margin-top: 13px; }
+  .hslot { display: flex; flex-direction: column; align-items: center; gap: 5px;
+           justify-content: flex-end; height: 100%; }
+  .hslot b { display: block; }
+  .hslot em { font-style: normal; }
+  .legends { display: flex; flex-wrap: wrap; gap: 8px 13px; margin-top: 13px; }
+  .legend { display: inline-flex; align-items: center; gap: 5px; }
+  .legend i { width: 9px; height: 9px; border-radius: 3px; display: block; }
+
+  /* ---------------- colophon ---------------- */
+  .colophon { margin-top: 56px; padding-top: 22px;
+              border-top: var(--hairline) solid var(--line); max-width: 62ch;
+              display: flex; flex-direction: column; gap: 8px; }
+
+  @media (max-width: 460px) {
+    .page { padding: 34px 16px 56px; }
+    .masthead h1 { font-size: 34px; }
+    .device { zoom: 0.86; }
+  }
+</style>
+
+<main class="page">
+  <header class="masthead">
+    <div class="kicker">
+      <span class="M1 dim">Squish Index</span>
+      <span class="M1 dim">Build 1.0 &middot; 8 screens &middot; as implemented</span>
+    </div>
+    <h1>A specimen catalogue for objects that are inherently silly and soft.</h1>
+    <p class="B1">These are the screens the SwiftUI actually draws, rendered against the same
+      locked tokens: putty canvas, ink type, hairlines instead of shadows, and no brand accent
+      anywhere. Every colour you can see comes out of a specimen. Screens 1&ndash;4 were mocked
+      before the build; 5&ndash;8 are new.</p>
+    <p class="B3 dim">Plates hold drawn stand-ins rather than photographs &mdash; the shapes match
+      the six silhouette classes the app assigns. Screen 4&rsquo;s durometer is live: drag it,
+      or focus it and use the arrow keys.</p>
+  </header>
+
+  <dl class="facts">
+    <div class="fact"><dt>Palette</dt><dd>Five tokens, no accent. #F1F0EC putty, #14151A ink,
+      #74777E soft, #DDDBD4 line, #FFFFFF chalk.</dd></div>
+    <div class="fact"><dt>Type</dt><dd>Bricolage Grotesque names things, Inter explains them,
+      DM Mono measures them. The split is load-bearing.</dd></div>
+    <div class="fact"><dt>Geometry</dt><dd>15 pt cards, 19&ndash;24 pt plates, 26 pt sheet tops,
+      13 pt gutter, 22 pt margin.</dd></div>
+    <div class="fact"><dt>The signature</dt><dd>Ten bars that compress with area conserved.
+      Width 12&nbsp;&rarr;&nbsp;26 pt, height by the reciprocal.</dd></div>
+  </dl>
+
+  <div class="rack">__SLOTS__</div>
+
+  <footer class="colophon">
+    <span class="M1 dim">Colophon</span>
+    <p class="B3 dim">Bricolage Grotesque, Inter and DM Mono are bundled under the SIL Open Font
+      License 1.1 and inlined here as latin subsets. The durometer geometry, the type scale and
+      every spacing value on this page are read from the same specification the app is built
+      against &mdash; <b>SPEC.md</b> §2 and <b>Design/UX-SPEC.md</b> §2.1 and §5.1.</p>
+  </footer>
+</main>
+
+<script>
+  (function () {
+    var SENTENCES = __SENTENCES__;
+    var wrap = document.getElementById("duroWrap");
+    if (!wrap) return;
+    var duro = wrap.querySelector(".duro");
+    var bars = Array.prototype.slice.call(duro.querySelectorAll("b"));
+    var numEl = document.getElementById("duroNum");
+    var sentEl = document.getElementById("duroSentence");
+    var TRACK = 340, SLOT = TRACK / 10;
+    var level = 7;
+
+    function hBase(i) { return 88 - (i - 1) * (22 / 9); }
+    function wOf(k) { return 12 + 14 * k; }
+    function hOf(i, k) { return hBase(i) * (12 / wOf(k)); }
+    function rOf(i, k) { return Math.min(3 + 10 * k, wOf(k) / 2, hOf(i, k) / 2); }
+
+    function render() {
+      var k = (level - 1) / 9;
+      bars.forEach(function (bar, index) {
+        var i = index + 1;
+        var on = i <= level;
+        var kk = on ? k : 0;
+        bar.style.width = wOf(kk).toFixed(2) + "px";
+        bar.style.height = hOf(i, kk).toFixed(2) + "px";
+        bar.style.borderRadius = rOf(i, kk).toFixed(2) + "px";
+        bar.style.background = on ? "#14151A" : "#74777E";
+      });
+      numEl.textContent = String(level);
+      var s = SENTENCES[level - 1];
+      sentEl.innerHTML = "<b>" + s[0] + ".</b> <span class='dim'>" + s[1] + "</span>";
+      wrap.setAttribute("aria-valuenow", String(level));
+      wrap.setAttribute("aria-valuetext", level + " of 10. " + s[0] + ".");
+    }
+
+    function setFromX(clientX) {
+      var box = duro.getBoundingClientRect();
+      var next = Math.min(10, Math.max(1, Math.floor((clientX - box.left) / SLOT) + 1));
+      if (next !== level) { level = next; render(); }
+    }
+
+    var dragging = false;
+    wrap.addEventListener("pointerdown", function (event) {
+      dragging = true;
+      wrap.setPointerCapture(event.pointerId);
+      setFromX(event.clientX);
+    });
+    wrap.addEventListener("pointermove", function (event) {
+      if (dragging) { setFromX(event.clientX); }
+    });
+    wrap.addEventListener("pointerup", function () { dragging = false; });
+    wrap.addEventListener("pointercancel", function () { dragging = false; });
+    wrap.addEventListener("keydown", function (event) {
+      var delta = 0;
+      if (event.key === "ArrowRight" || event.key === "ArrowUp") { delta = 1; }
+      if (event.key === "ArrowLeft" || event.key === "ArrowDown") { delta = -1; }
+      if (!delta) { return; }
+      event.preventDefault();
+      level = Math.min(10, Math.max(1, level + delta));
+      render();
+    });
+
+    render();
+  })();
+</script>

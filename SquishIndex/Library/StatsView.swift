@@ -8,7 +8,9 @@ import SwiftUI
 struct StatsView: View {
     let stats: LibraryStats
 
-    private let labelColumn: CGFloat = 88
+    // Wider than the sheet's 88: "Most unusual" wraps at 88 and the row grid
+    // stops reading as a grid.
+    private let labelColumn: CGFloat = 104
 
     var body: some View {
         ScrollView {
@@ -116,7 +118,7 @@ struct StatsView: View {
             }
             if let form = stats.formCounts.first {
                 HairlineRule()
-                summaryRow("Commonest form", "\(form.form.display) · \(form.count)")
+                summaryRow("Common form", "\(form.form.display) · \(form.count)")
             }
         }
     }
