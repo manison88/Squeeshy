@@ -19,9 +19,9 @@ Requires **Xcode 16** or later (the project uses a file-system-synchronised
 group, so new files in `SquishIndex/` are picked up without touching the project
 file). Deployment target is **iOS 17.0**. No third-party dependencies.
 
-Set your team in **Signing & Capabilities** before running on device. The bundle
-identifier is `com.squeeshy.app` — the App Store listing's ID — so leave it as is;
-the iCloud container follows it (`iCloud.com.squeeshy.app`).
+Set your own team and bundle identifier in **Signing & Capabilities** before
+running on device — `PRODUCT_BUNDLE_IDENTIFIER` currently reads
+`com.squishindex.SquishIndex`.
 
 ## Verifying it on device
 

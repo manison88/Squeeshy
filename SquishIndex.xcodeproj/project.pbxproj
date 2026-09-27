@@ -224,7 +224,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.squeeshy.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.squishindex.SquishIndex;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -249,7 +249,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2;
-				PRODUCT_BUNDLE_IDENTIFIER = com.squeeshy.app;
+				PRODUCT_BUNDLE_IDENTIFIER = com.squishindex.SquishIndex;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
