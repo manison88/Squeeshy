@@ -10,11 +10,6 @@ under an artifact CSP that blocks external hosts.
 | `inter-400600.woff2` | Inter | 400–600 (variable) | SIL Open Font License 1.1 |
 | `dmmono-400.woff2` | DM Mono | 400 | SIL Open Font License 1.1 |
 | `dmmono-500.woff2` | DM Mono | 500 | SIL Open Font License 1.1 |
-| `archivo.woff2` | Archivo | 400–700 (variable, wdth 62–125) | SIL Open Font License 1.1 |
-| `newsreader.woff2` | Newsreader | 300–600 (variable, opsz 6–72) | SIL Open Font License 1.1 |
-
-Archivo and Newsreader were added for the direction study in
-`variations.html` and are not used by the app.
 
 All three are licensed under the SIL Open Font License, Version 1.1, which
 permits bundling and redistribution — including embedding in an iOS app —
@@ -26,8 +21,6 @@ Upstream sources:
 - Bricolage Grotesque — <https://github.com/ateliertriay/bricolage>
 - Inter — <https://github.com/rsms/inter>
 - DM Mono — <https://github.com/googlefonts/dm-mono>
-- Archivo — <https://github.com/Omnibus-Type/Archivo>
-- Newsreader — <https://github.com/productiontype/Newsreader>
 
 Subsets were retrieved from the Google Fonts CSS API (latin range,
 `U+0000-00FF`). When these are added to the iOS target, use the full `.ttf`
