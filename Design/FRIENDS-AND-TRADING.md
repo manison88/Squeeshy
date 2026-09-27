@@ -149,7 +149,7 @@ or share.
 ## 6. Spec changes this would need
 
 - `SPEC.md` §6: add "…and files the user explicitly sends through the system share sheet."
-- `SPEC.md` §7: narrow "no social" to "no social feeds, accounts, or in-app messaging.""
+- `SPEC.md` §7: narrow "no social" to "no social feeds, accounts, or in-app messaging."
 - `SPEC.md` §5: add Milestone 6 — Transfer & Shelf cards.
 - Design: two new surfaces (*Incoming specimen* card, *Friends* list). Both reuse existing
   components (`PhotoPlate`, `SpecimenCard`, `MonoLabel`, the Grid) — no new visual language.
