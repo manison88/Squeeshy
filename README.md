@@ -68,6 +68,8 @@ the app and the library-import path, but not the camera.
 | Reference-card measurement | Yes, automatic |
 | Duplicate detection (feature prints) | Yes |
 | Cloud identification (type, subject, material) | **Not wired** — see below |
+| Friends, trade requests, trade table (M6) | Yes — see below |
+| iPad (universal, split view) | Yes |
 
 ### Cloud identification is deliberately absent
 
@@ -83,6 +85,67 @@ key still ships inside the app bundle, so if this ever goes to the App Store the
 call needs to go through a small proxy you control instead. Tell me which and
 I'll wire it — the call site is one function and the save path already treats
 identification as optional, so nothing else moves.
+
+## Friends & trading (Milestone 6)
+
+Design: `Design/FRIENDS-AND-TRADING.md`. Mockups: `friends-trading.html`. Code:
+`SquishIndex/Friends/`.
+
+- **Friends** — invite through iCloud (Messages, Mail…). Each person's shelf is a CloudKit
+  zone shared read-only with their friends; friends see thumbnails and measurements, never
+  full photos. Invite-only, mutual, removable. No search, no usernames, no chat.
+- **Trade requests** — pick a friend's squishy, offer one or more of yours, add an optional
+  preset line. The friend accepts or declines; both tick *handed over* once the real toys have
+  swapped (in person or by post); then each device files the swap.
+- **Trade table** — two devices side by side (MultipeerConnectivity, no internet). Each puts
+  squishies in and votes ✓ / ✗. Both ✓ on the same table trades instantly. Changing the table
+  clears both votes.
+- **iPad** — universal app. Regular width uses a split view (library, friends, trades and the
+  trade table in a sidebar); the grid adds columns; the camera follows device orientation.
+  iPhone behaviour is unchanged (portrait, same layouts).
+
+Traded-away squishies leave the grid, counts and stats but stay in an archive under
+**Trades → Traded away**. Anything received keeps its original measurements and records its
+provenance (`From`, `Owners` on the specimen sheet). Mark a squishy **Keep it** on its sheet
+(or from the grid's context menu) and friends can see it but not request it.
+
+### One-time setup in Xcode
+
+1. **Signing & Capabilities** → set your team and bundle identifier.
+2. Add the **iCloud** capability, tick **CloudKit**, and create/select the container
+   `iCloud.<your bundle id>` (the entitlements file already names it that way).
+3. Add **Push Notifications** and **Background Modes → Remote notifications** (the
+   entitlement and `UIBackgroundModes` are already in place; Xcode just needs to register
+   them for your App ID).
+4. Run on **two devices signed into two different iCloud accounts** to test friends — a
+   share can't be accepted by the account that owns it. The Simulator can't test the trade
+   table; two real devices near each other can.
+
+### Before the App Store
+
+- **Deploy the CloudKit schema.** Run through friend + trade once on a development build so
+  every record type exists (`Profile`, `Specimen`, `TradeRequest`, `TradeReply`), then in the
+  CloudKit Console choose *Deploy Schema Changes* to Production. No indexes are required —
+  the app never queries, it reads zones whole.
+- **App icon.** `AppIcon.appiconset` has no image yet; App Store Connect rejects a build
+  without a 1024 × 1024 icon.
+- **Privacy.** `PrivacyInfo.xcprivacy` declares no tracking and no collected data (the only
+  required-reason API is `UserDefaults`). In App Store Connect's privacy form, *Data Not
+  Collected* is accurate: shelves live in the user's own iCloud, not with the developer.
+- **Age rating / Kids.** Friends are invite-only with no free text, but the app does let
+  users exchange photos with people they invite. Answer the age-rating questionnaire with
+  that in mind. If you consider the Kids category, read App Review Guideline 1.3 first — its
+  rules on sharing and parental gates are strict; a general category is the simpler path.
+- **Screenshots** for 6.9" iPhone and 13" iPad, which Connect now requires for a universal app.
+
+### Known limits
+
+- Friends and requests refresh on launch, on return to the foreground, on pull-to-refresh and
+  on CloudKit's silent push; silent pushes are best-effort, so a request can take until the
+  next open to appear.
+- The trade table connects one pair of devices at a time.
+- On iPad, tap-to-focus in the viewfinder maps points for portrait; in landscape it focuses
+  near, not exactly at, the tap.
 
 ## Calls made on the spec's open questions
 
@@ -143,6 +206,7 @@ SquishIndex/
   Vision/         SquishyVision — segmentation, palette, silhouette, millimetres
   Library/        grid, empty state, true-scale shelf, stats, filters
   Detail/         specimen sheet
+  Friends/        friends store, CloudKit shelf, trade ledger, trade table, and their screens
   DesignSystem/   tokens, typography, durometer, shared components
   Resources/      bundled typefaces, asset catalogue
 Config/Info.plist

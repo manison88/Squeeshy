@@ -12,6 +12,8 @@ struct CaptureView: View {
     let onClose: () -> Void
 
     @State private var camera = CameraController()
+    /// iPad rotates freely, so the camera follows it; iPhone stays portrait.
+    private let isPad = UIDevice.current.userInterfaceIdiom == .pad
     @State private var focusPoint: CGPoint?
     @State private var focusToken = 0
     @State private var pickerItem: PhotosPickerItem?
@@ -50,7 +52,10 @@ struct CaptureView: View {
         }
         .preferredColorScheme(.dark)
         .statusBarHidden()
-        .onAppear { camera.start() }
+        .onAppear {
+            camera.followsDeviceRotation = isPad
+            camera.start()
+        }
         .onDisappear { camera.stop() }
         .sensoryFeedback(.impact(weight: .medium), trigger: captureCount)
         .task(id: pickerItem) { await loadPickedItem() }
@@ -60,7 +65,7 @@ struct CaptureView: View {
 
     private var preview: some View {
         GeometryReader { proxy in
-            CameraPreview(session: camera.session)
+            CameraPreview(session: camera.session, followsDeviceRotation: isPad)
                 .ignoresSafeArea()
                 .opacity(camera.status == .interrupted ? 0.4 : 1)
                 .contentShape(Rectangle())

@@ -20,7 +20,11 @@ enum LibraryTab: String, CaseIterable, Hashable {
 /// fight the locked flat direction. UX-SPEC §8.
 @MainActor
 struct LibraryView: View {
-    @Query(sort: \Squishy.addedAt, order: .reverse) private var specimens: [Squishy]
+    /// On iPad the sidebar carries Friends, so the Grid header doesn't.
+    var showsFriendsButton = true
+
+    @Query(sort: \Squishy.addedAt, order: .reverse) private var allSpecimens: [Squishy]
+    @Environment(FriendsStore.self) private var friendsStore
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -37,6 +41,11 @@ struct LibraryView: View {
     @State private var renaming: Squishy?
     @State private var adjustingSquish: Squishy?
     @State private var pendingDeletion: Squishy?
+    @State private var showFriends = false
+
+    /// Traded-away specimens stay in the store as an archive (Trades → Traded
+    /// away) but leave the catalogue, its counts and its stats.
+    private var specimens: [Squishy] { allSpecimens.filter { !$0.isTraded } }
 
     private var organised: [Squishy] {
         LibraryOrganiser.organise(specimens, sort: sort, filter: filter)
@@ -64,6 +73,9 @@ struct LibraryView: View {
             }
             .navigationDestination(for: Squishy.self) { specimen in
                 SpecimenDetailView(specimen: specimen)
+            }
+            .navigationDestination(isPresented: $showFriends) {
+                FriendsView()
             }
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -130,12 +142,39 @@ struct LibraryView: View {
     }
 
     private var header: some View {
-        IndexHeader(title: "Squish Index",
-                    specimenCount: specimens.count,
-                    averageSquish: stats.averageSquish,
-                    filteredCount: filter.isActive ? organised.count : nil)
+        HStack(alignment: .top, spacing: SquishTheme.Space.gutter) {
+            IndexHeader(title: "Squish Index",
+                        specimenCount: specimens.count,
+                        averageSquish: stats.averageSquish,
+                        filteredCount: filter.isActive ? organised.count : nil)
+            if showsFriendsButton {
+                friendsButton
+            }
+        }
             .padding(.horizontal, SquishTheme.Space.margin)
             .padding(.top, SquishTheme.Space.gutter)
+    }
+
+    /// One icon button, with a count badge for things waiting on this user —
+    /// the badge carries the state, not a colour. Design/FRIENDS-AND-TRADING.md.
+    private var friendsButton: some View {
+        Button { showFriends = true } label: {
+            Image(systemName: "person.2")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(SquishTheme.ink)
+                .frame(width: 44, height: 44)
+                .background(SquishTheme.chalk, in: Circle())
+                .overlay(Circle().strokeBorder(SquishTheme.line, lineWidth: SquishTheme.hairline))
+                .overlay(alignment: .topTrailing) {
+                    if friendsStore.badgeCount > 0 {
+                        CountBadge(count: friendsStore.badgeCount)
+                            .offset(x: 4, y: -4)
+                    }
+                }
+        }
+        .buttonStyle(PressStyle())
+        .accessibilityLabel("Friends")
+        .accessibilityValue(friendsStore.badgeCount > 0 ? "\(friendsStore.badgeCount) waiting" : "")
     }
 
     /// Shelf and Stats are disabled, not hidden, on an empty library: the empty
@@ -202,8 +241,10 @@ struct LibraryView: View {
                 .padding(.horizontal, SquishTheme.Space.margin)
                 .padding(.top, SquishTheme.Space.gutter)
             } else {
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: SquishTheme.Space.gutter),
-                                    GridItem(.flexible(), spacing: SquishTheme.Space.gutter)],
+                // Two-up on a phone; more columns on an iPad, so cards stay
+                // specimen-sized rather than stretching to half a 13-inch screen.
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: SquishTheme.Space.gutter),
+                                         count: AdaptiveGrid.columns(for: width)),
                           spacing: SquishTheme.Space.margin) {
                     ForEach(organised) { specimen in
                         cardLink(specimen) {
@@ -224,7 +265,7 @@ struct LibraryView: View {
     static let scrollSpace = "libraryScroll"
 
     private func cardWidth(in width: CGFloat) -> CGFloat {
-        max(120, (width - SquishTheme.Space.margin * 2 - SquishTheme.Space.gutter) / 2)
+        AdaptiveGrid.cardWidth(for: width, columns: AdaptiveGrid.columns(for: width))
     }
 
     private func cardLink<Content: View>(_ specimen: Squishy,
@@ -244,6 +285,10 @@ struct LibraryView: View {
         .contextMenu {
             Button("Rename") { renaming = specimen }
             Button("Change squish") { adjustingSquish = specimen }
+            Button(specimen.isKeeping ? "Open to trade" : "Keep — don't trade") {
+                specimen.isKeeping.toggle()
+                try? modelContext.save()
+            }
             Button("Delete…", role: .destructive) { pendingDeletion = specimen }
         }
     }

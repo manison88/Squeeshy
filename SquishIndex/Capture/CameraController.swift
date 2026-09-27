@@ -28,6 +28,12 @@ final class CameraController: NSObject, @unchecked Sendable {
 
     let session = AVCaptureSession()
 
+    /// iPad only: follow the device's orientation instead of locking every
+    /// connection to portrait. Set before `start()`. iPhone stays portrait.
+    var followsDeviceRotation = false
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+    private var rotationObservation: NSKeyValueObservation?
+
     private let photoOutput = AVCapturePhotoOutput()
     private let videoOutput = AVCaptureVideoDataOutput()
     private let sessionQueue = DispatchQueue(label: "index.squish.camera.session")
@@ -117,16 +123,33 @@ final class CameraController: NSObject, @unchecked Sendable {
         }
 
         // Portrait, once, on every connection — then every buffer, the photo
-        // and the depth map all share one upright frame.
-        for output in [photoOutput as AVCaptureOutput, videoOutput as AVCaptureOutput] {
-            guard let connection = output.connection(with: .video) else { continue }
-            if connection.isVideoRotationAngleSupported(90) {
-                connection.videoRotationAngle = 90
+        // and the depth map all share one upright frame. On iPad the frame
+        // follows the horizon instead, so it is upright in any orientation;
+        // the preview layer follows the same coordinator (CameraPreview).
+        if followsDeviceRotation {
+            let coordinator = AVCaptureDevice.RotationCoordinator(device: device, previewLayer: nil)
+            rotationCoordinator = coordinator
+            applyRotation(coordinator.videoRotationAngleForHorizonLevelCapture)
+            rotationObservation = coordinator.observe(\.videoRotationAngleForHorizonLevelCapture,
+                                                      options: [.new]) { [weak self] coordinator, _ in
+                let angle = coordinator.videoRotationAngleForHorizonLevelCapture
+                self?.sessionQueue.async { self?.applyRotation(angle) }
             }
+        } else {
+            applyRotation(90)
         }
 
         setMethod(resolvedMethod)
         return true
+    }
+
+    private func applyRotation(_ angle: CGFloat) {
+        for output in [photoOutput as AVCaptureOutput, videoOutput as AVCaptureOutput] {
+            guard let connection = output.connection(with: .video) else { continue }
+            if connection.isVideoRotationAngleSupported(angle) {
+                connection.videoRotationAngle = angle
+            }
+        }
     }
 
     private func observeInterruptions() {

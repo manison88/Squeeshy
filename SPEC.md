@@ -176,14 +176,15 @@ Build these in order. Stop after each and report.
 3. **True-scale shelf.** Screen 7. Depends on 2 being trustworthy.
 4. **Identification.** Claude API call, tags, material. Graceful degradation.
 5. **Duplicates and stats.** Feature prints, the twin card, screen 8.
+6. **Friends and trading.** iCloud-shared shelves, trade requests and hand-overs, the in-person trade table, and iPad layout. Design/FRIENDS-AND-TRADING.md.
 
 ## 6. Constraints
 
 - No third-party dependencies without asking. Swift Charts is fine.
-- No analytics, no accounts, no network calls except the one identification request.
+- No analytics, no accounts, no network calls except the one identification request — and, from Milestone 6, CloudKit sync of the user's own shared shelf, friends and trades, plus the direct device-to-device link at a trade table.
 - Accessibility is not optional: the durometer needs a proper `accessibilityValue` and adjustable trait; every icon-only button needs a label; Dynamic Type must not break the grid.
 - Respect Reduce Motion — the scan sweep and durometer animation both need to no-op.
-- Photos stay on device.
+- Full-resolution photos stay on device. Friends see thumbnails; a full photo leaves the device only as part of a trade both people agreed to.
 
 ## 7. Anti-goals
 
@@ -192,5 +193,5 @@ Say no to these if they come up:
 - **Do not make it cute.** No pastel chrome, no rounded playful fonts, no emoji, no mascot, no bouncy spring on everything. The restraint is the design.
 - **Do not fake measurements.** If depth and card both fail, say size wasn't captured. Never estimate millimetres from an unreferenced photo and present them as measured.
 - **Do not gate the app on the cloud.** Offline capture must work end to end.
-- **Do not add social, sharing feeds, or gamification** in v1.
+- **Do not add feeds, discovery, chat, or gamification.** Friends (Milestone 6) are invite-only and mutual, and trade requests carry no free text.
 - **Do not use a stock `Slider` for squish.** The durometer is the product's signature.

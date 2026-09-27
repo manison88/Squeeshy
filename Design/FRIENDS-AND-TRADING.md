@@ -1,8 +1,7 @@
 # Squish Index — Friends & Trading (proposal)
 
-> Status: **proposal, needs owner sign-off.** This changes two locked rules in `SPEC.md`
-> (§6 "no accounts, no network calls except identification"; §7 "no social in v1") — see §8.
-> Proposed as **Milestone 6**, after M5. Nothing in M1–M5 changes.
+> Status: **approved and built** as Milestone 6. `SPEC.md` §5–§7 are updated to match.
+> Code: `SquishIndex/Friends/`. Mockups: `friends-trading.html`.
 
 ## 1. The request
 
@@ -111,30 +110,59 @@ When both have tapped:
   the collection.
 - If a squishy comes back (same `originID`), the archived record is restored.
 
-## 5. Model additions
+## 4.5 The trade table (in person)
 
-```swift
-// On Squishy
-var originID: UUID                  // stable across every owner
-var status: String                  // "held" | "traded"
-var openToTrade: Bool
-var provenance: [ProvenanceEntry]   // Codable: owner, from, to
+When two friends are together, either one opens a **trade table**. The two devices connect
+directly with MultipeerConnectivity (Wi-Fi / Bluetooth, no internet, encryption required).
 
-// Local mirrors of CloudKit state
-@Model final class Friend       { var name: String; var shareURL: URL; var lastSeen: Date }
-@Model final class FriendItem   { /* thumbnail, name, squish, size, palette, openToTrade */ }
-@Model final class TradeRequest { var id: UUID; var from: String; var to: String
-                                  var offered: [UUID]; var wanted: [UUID]
-                                  var state: String   // sent|accepted|declined|done|expired
-                                  var handedOverBy: [String]; var createdAt: Date }
-```
+1. **Nearby** — both open *Trade in person*. Friends are listed first; a device that isn't a
+   friend is labelled *Not a friend yet*. Tapping *Open table* sends an invitation.
+2. **Join** — the other person sees *"Maya wants to open a trade table"* and must tap
+   **Join table**. Nothing connects without that tap.
+3. **Put in** — each taps squishies on their own shelf to put them on the table. Both sides are
+   visible live on both devices.
+4. **Vote** — once both sides have something, each votes ✓ *Trade* or ✗ *No trade*. Votes show
+   on each side as a shape and a word.
+5. **Traded** — only when both vote ✓ on the same table. Both devices file the swap at once:
+   there is no hand-over step, because the toys are right there.
 
-Friends' items are stored **separately** from the user's own catalogue, so they never leak into
-the user's counts, stats or duplicate detection.
+Rules enforced by the protocol (`TradeTableSession`), not by trust:
 
-**Sync engine:** `CKSyncEngine` (iOS 17, which matches the deployment floor). SwiftData's built-in
-CloudKit sync only covers the private database and can't share, so the shelf zone is mirrored
-by hand: about one file of code, with no dependencies.
+- A vote is bound to a key naming exactly what is on both sides. **Changing anything clears
+  both votes**, so a yes can never carry over to a different squishy.
+- After two yeses each side sends its specimens and acknowledges the other's. A device files
+  the swap only when it has the other's specimens *and* the other has confirmed receiving its
+  own, so a dropped link mid-swap leaves both catalogues untouched.
+- Received specimens must match exactly what was on the other side of the table.
+
+## 5. Model additions (as built)
+
+On `Squishy`, all **optional**, so existing collections migrate with no schema version:
+
+| Field | Meaning |
+|---|---|
+| `originID: UUID?` | Lineage across owners; `nil` = photographed here (`lineageID` falls back to `id`) |
+| `tradeStatus: String?` | `nil` held, `"TRADED"` archived after a trade |
+| `tradedTo`, `tradedAt` | Who it went to, and when |
+| `acquiredFrom: String?` | Whose shelf it came from |
+| `keepFlag: Bool?` | *Keeping* — hides Request on friends' copies |
+| `provenanceData: Data?` | JSON `[ProvenanceEntry]` — earlier owners |
+
+Friends, requests and replies are **not** SwiftData. They are value types
+(`FriendsModels.swift`) cached as JSON in Application Support, because they are a copy of
+other people's iCloud data and must never mix into this user's catalogue, counts, stats or
+duplicate detection.
+
+**Sync:** plain CloudKit async APIs (`ShelfCloud.swift`). Each refresh reads zones whole with
+`recordZoneChanges(since: nil)` — shelves are small, and a full read needs no queryable
+indexes and cannot drift the way a change-token cache can. The user's own shelf is published
+by diff: only specimens whose revision changed are re-uploaded, and thumbnails only when the
+photo changed.
+
+**Completing a remote trade:** each side attaches its specimens (full photo + measurements)
+as a payload asset — the requester on the request, the responder on an accepting reply. When
+both hand-over flags are set, each device downloads the *other* side's payload and files it
+through `TradeLedger`, the same code the trade table uses.
 
 ## 6. Offline and no-iCloud behaviour
 
@@ -153,7 +181,7 @@ by hand: about one file of code, with no dependencies.
 - **We hold no children's data.** Everything lives in the families' own iCloud accounts. The
   developer can't see or read shelves.
 
-## 8. Spec changes this would need
+## 8. Spec changes (made)
 
 - `SPEC.md` §6: add "…and CloudKit sync of the user's shared shelf, friends and trades."
   Also "Photos stay on device" → "full-resolution photos stay on device; friends see thumbnails."

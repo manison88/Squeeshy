@@ -54,6 +54,7 @@ struct SpecimenDetailView: View {
 
 private struct SpecimenSpecs: View {
     @Bindable var specimen: Squishy
+    @Environment(\.modelContext) private var modelContext
 
     private let labelColumn: CGFloat = 88
 
@@ -129,8 +130,43 @@ private struct SpecimenSpecs: View {
                 row("Method", specimen.method.explanation)
                 HairlineRule()
             }
-            row("Filed", specimen.addedAt.formatted(date: .abbreviated, time: .shortened))
+            row(specimen.acquiredFrom == nil ? "Filed" : "Arrived",
+                specimen.addedAt.formatted(date: .abbreviated, time: .shortened))
+            if let from = specimen.acquiredFrom {
+                HairlineRule()
+                row("From", "\(from)'s shelf")
+            }
+            if !specimen.provenance.isEmpty {
+                HairlineRule()
+                row("Owners", (specimen.provenance.map(\.owner) + ["you"]).joined(separator: " → "))
+            }
+            HairlineRule()
+            tradingRow
         }
+    }
+
+    /// Whether friends can ask for this one. Kept squishies still show on
+    /// friends' copies of the shelf, labelled, with no Request button.
+    private var tradingRow: some View {
+        HStack(alignment: .center, spacing: SquishTheme.Space.gutter) {
+            MonoLabel(text: "Trading")
+                .frame(width: labelColumn, alignment: .leading)
+            Text(specimen.isKeeping ? "Keeping" : "Open to trade")
+                .typeStyle(.b1)
+                .foregroundStyle(SquishTheme.ink)
+            Spacer(minLength: 0)
+            Button(specimen.isKeeping ? "Open it" : "Keep it") {
+                specimen.isKeeping.toggle()
+                try? modelContext.save()
+            }
+            .typeStyle(.m1)
+            .foregroundStyle(SquishTheme.ink)
+            .padding(.horizontal, SquishTheme.Space.gutter)
+            .frame(height: 30)
+            .overlay(Capsule().strokeBorder(SquishTheme.line, lineWidth: SquishTheme.hairline))
+            .frame(minHeight: 44)
+        }
+        .accessibilityElement(children: .contain)
     }
 
     private var methodLine: String {

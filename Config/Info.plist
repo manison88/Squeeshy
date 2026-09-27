@@ -22,6 +22,22 @@
 	<string>1</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Friends & trading (Milestone 6). Accepting an iCloud shelf invite. -->
+	<key>CKSharingSupported</key>
+	<true/>
+	<!-- Silent CloudKit pushes when a friend's shelf or a trade changes. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
+	<!-- The in-person trade table connects to the phone next to it directly. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Squish Index finds a friend's phone nearby so you can open a trade table together.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_squish-table._tcp</string>
+		<string>_squish-table._udp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Squish Index uses the camera to photograph and measure your squishies. Photos stay on this device.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -36,11 +52,19 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
-	<!-- The capture flow is portrait-only; nothing in the catalogue benefits
-	     from landscape. -->
+	<!-- iPhone is portrait-only; nothing in the catalogue benefits from
+	     landscape there. iPad supports every orientation (required for iPad
+	     multitasking), and the camera follows the device on iPad. -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
