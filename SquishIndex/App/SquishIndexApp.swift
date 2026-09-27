@@ -21,6 +21,12 @@ struct SquishIndexApp: App {
             fatalError("Could not open the specimen index: \(error)")
         }
         FriendsStore.shared.attach(container)
+        #if DEBUG
+        if FriendsSelfTest.isRequested {
+            let container = container
+            Task { @MainActor in await FriendsSelfTest.run(container: container) }
+        }
+        #endif
     }
 
     var body: some Scene {

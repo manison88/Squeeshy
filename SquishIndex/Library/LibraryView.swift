@@ -41,7 +41,6 @@ struct LibraryView: View {
     @State private var renaming: Squishy?
     @State private var adjustingSquish: Squishy?
     @State private var pendingDeletion: Squishy?
-    @State private var showFriends = false
 
     /// Traded-away specimens stay in the store as an archive (Trades → Traded
     /// away) but leave the catalogue, its counts and its stats.
@@ -74,9 +73,9 @@ struct LibraryView: View {
             .navigationDestination(for: Squishy.self) { specimen in
                 SpecimenDetailView(specimen: specimen)
             }
-            .navigationDestination(isPresented: $showFriends) {
-                FriendsView()
-            }
+            // Friends is a value route like everything inside it: pushing it
+            // with `isPresented` left its own value links dead on iPhone.
+            .friendsDestinations()
             .toolbar(.hidden, for: .navigationBar)
         }
         .tint(SquishTheme.ink)
@@ -158,7 +157,7 @@ struct LibraryView: View {
     /// One icon button, with a count badge for things waiting on this user —
     /// the badge carries the state, not a colour. Design/FRIENDS-AND-TRADING.md.
     private var friendsButton: some View {
-        Button { showFriends = true } label: {
+        NavigationLink(value: FriendsRoute.friends) {
             Image(systemName: "person.2")
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(SquishTheme.ink)
@@ -270,7 +269,8 @@ struct LibraryView: View {
 
     private func cardLink<Content: View>(_ specimen: Squishy,
                                          @ViewBuilder content: () -> Content) -> some View {
-        NavigationLink(value: specimen) {
+        let reduceMotion = reduceMotion
+        return NavigationLink(value: specimen) {
             content()
                 .scrollTransition(.interactive, axis: .vertical) { view, phase in
                     // Asymmetric on purpose: cards settle in as they arrive and

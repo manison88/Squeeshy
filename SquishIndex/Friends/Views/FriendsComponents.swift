@@ -3,6 +3,7 @@ import SwiftUI
 /// Navigation inside the friends area. One enum so iPhone (pushed from the
 /// Grid) and iPad (the split view's detail column) share every destination.
 enum FriendsRoute: Hashable {
+    case friends
     case shelf(friendID: String)
     case item(friendID: String, itemID: String)
     case trades
@@ -15,6 +16,8 @@ extension View {
     func friendsDestinations() -> some View {
         navigationDestination(for: FriendsRoute.self) { route in
             switch route {
+            case .friends:
+                FriendsView()
             case .shelf(let friendID):
                 FriendShelfView(friendID: friendID)
             case .item(let friendID, let itemID):

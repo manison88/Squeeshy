@@ -51,6 +51,12 @@ final class FriendsStore {
     private var completing: Set<UUID> = []
     private var hasStarted = false
 
+    #if DEBUG
+    /// Debug builds: stands in for iCloud when `FriendsDebug.isOn`.
+    private(set) var simulator: FriendsSimulator? = nil
+    private var simulatorTask: Task<Void, Never>? = nil
+    #endif
+
     private enum Keys {
         static let displayName = "friends.displayName"
         static let completed = "friends.completedTrades"
@@ -106,6 +112,13 @@ final class FriendsStore {
     /// devices at a trade table so they can tell a friend from a stranger.
     var myUserID: String? { myID }
 
+    /// Lineage IDs this user has put up in trades that could still complete.
+    /// A squishy can only be promised once, or it could be handed to two people.
+    var promisedIDs: Set<String> {
+        Set(trades.filter { $0.state == .waitingForReply || $0.state == .inProgress }
+            .flatMap(\.giving).map(\.id))
+    }
+
     func friend(_ id: String) -> Friend? { friends.first { $0.id == id } }
 
     func trades(with friendID: String) -> [Trade] { trades.filter { $0.friendID == friendID } }
@@ -120,6 +133,12 @@ final class FriendsStore {
 
     /// Safe to call repeatedly; re-runs the account check each time.
     func start() async {
+        #if DEBUG
+        if FriendsDebug.isOn {
+            await startSimulation()
+            return
+        }
+        #endif
         if !hasStarted {
             hasStarted = true
             NotificationCenter.default.addObserver(forName: .CKAccountChanged, object: nil, queue: .main) { [weak self] _ in
@@ -156,6 +175,13 @@ final class FriendsStore {
     // MARK: Refresh
 
     func refresh() async {
+        #if DEBUG
+        if let simulator {
+            refreshSimulation(simulator)
+            await completeReadyTrades()
+            return
+        }
+        #endif
         guard availability == .available, let myID, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
@@ -227,6 +253,9 @@ final class FriendsStore {
     }
 
     func publish() async {
+        #if DEBUG
+        if simulator != nil { return }
+        #endif
         guard availability == .available, myID != nil, let context else { return }
         let held = ((try? context.fetch(FetchDescriptor<Squishy>())) ?? []).filter { !$0.isTraded }
 
@@ -302,6 +331,13 @@ final class FriendsStore {
     }
 
     func remove(_ friend: Friend) async {
+        #if DEBUG
+        if let simulator {
+            simulator.unpair(friend.id)
+            friends.removeAll { $0.id == friend.id }
+            return
+        }
+        #endif
         do {
             try await cloud.leaveShelf(ownedBy: friend.id)
             if let share {
@@ -325,6 +361,7 @@ final class FriendsStore {
         case tooManyOpen
         case nothingOffered
         case itemGone
+        case alreadyPromised
 
         var errorDescription: String? {
             switch self {
@@ -332,6 +369,7 @@ final class FriendsStore {
             case .tooManyOpen: "You have \(FriendsStore.maxOpenOutgoing) requests waiting already. Wait for a reply or cancel one."
             case .nothingOffered: "Pick at least one of yours to offer."
             case .itemGone: "One of those squishies isn't on the shelf any more."
+            case .alreadyPromised: "One of those squishies is already in another trade. Cancel that one first."
             }
         }
     }
@@ -343,6 +381,7 @@ final class FriendsStore {
         guard let myID, availability == .available else { throw TradeError.notReady }
         guard !offered.isEmpty else { throw TradeError.nothingOffered }
         guard openOutgoingCount < Self.maxOpenOutgoing else { throw TradeError.tooManyOpen }
+        guard promisedIDs.isDisjoint(with: offered.map(\.lineageID.uuidString)) else { throw TradeError.alreadyPromised }
 
         let request = TradeRequest(
             id: UUID(),
@@ -356,6 +395,14 @@ final class FriendsStore {
             createdAt: .now,
             handedOver: false,
             cancelled: false)
+        #if DEBUG
+        if let simulator {
+            simulator.recordSent(request, payloads: offered.map(SpecimenPayload.init))
+            myRequests.append(request)
+            simulateSoon()
+            return
+        }
+        #endif
         let payload = try PayloadFile.write(offered.map(SpecimenPayload.init))
         try await cloud.save([cloud.requestRecord(request, payload: payload)])
         myRequests.append(request)
@@ -365,9 +412,11 @@ final class FriendsStore {
     func respond(to trade: Trade, accept: Bool) async throws {
         guard let myID, let context else { throw TradeError.notReady }
         var payloadURL: URL?
+        var giving: [Squishy] = []
         if accept {
-            let giving = TradeLedger.held(trade.giving.map(\.id), in: context)
+            giving = TradeLedger.held(trade.giving.map(\.id), in: context)
             guard giving.count == trade.giving.count else { throw TradeError.itemGone }
+            guard promisedIDs.isDisjoint(with: trade.giving.map(\.id)) else { throw TradeError.alreadyPromised }
             payloadURL = try PayloadFile.write(giving.map(SpecimenPayload.init))
         }
         let reply = TradeReply(requestID: trade.request.id,
@@ -376,6 +425,15 @@ final class FriendsStore {
                                accepted: accept,
                                handedOver: false,
                                repliedAt: .now)
+        #if DEBUG
+        if let simulator {
+            simulator.recordReply(reply, payloads: giving.map(SpecimenPayload.init))
+            myReplies.removeAll { $0.requestID == reply.requestID }
+            myReplies.append(reply)
+            simulateSoon()
+            return
+        }
+        #endif
         try await cloud.save([cloud.replyRecord(reply, payload: payloadURL)])
         myReplies.removeAll { $0.requestID == reply.requestID }
         myReplies.append(reply)
@@ -383,6 +441,24 @@ final class FriendsStore {
     }
 
     func markHandedOver(_ trade: Trade) async throws {
+        #if DEBUG
+        if simulator != nil {
+            switch trade.direction {
+            case .outgoing:
+                if let index = myRequests.firstIndex(where: { $0.id == trade.request.id }) {
+                    myRequests[index].handedOver = true
+                }
+            case .incoming:
+                if let index = myReplies.firstIndex(where: { $0.requestID == trade.request.id }) {
+                    myReplies[index].handedOver = true
+                }
+            }
+            simulator?.note("You handed yours over")
+            await refresh()
+            simulateSoon()
+            return
+        }
+        #endif
         switch trade.direction {
         case .outgoing:
             try await cloud.save([cloud.requestFlags(id: trade.request.id, handedOver: true, cancelled: false)])
@@ -396,7 +472,13 @@ final class FriendsStore {
 
     func cancel(_ trade: Trade) async throws {
         guard trade.direction == .outgoing else { return }
+        #if DEBUG
+        if simulator == nil {
+            try await cloud.save([cloud.requestFlags(id: trade.request.id, handedOver: false, cancelled: true)])
+        }
+        #else
         try await cloud.save([cloud.requestFlags(id: trade.request.id, handedOver: false, cancelled: true)])
+        #endif
         if let index = myRequests.firstIndex(where: { $0.id == trade.request.id }) {
             myRequests[index].cancelled = true
         }
@@ -410,10 +492,17 @@ final class FriendsStore {
         for trade in trades where trade.isReadyToComplete && !completing.contains(trade.id) {
             completing.insert(trade.id)
             defer { completing.remove(trade.id) }
-            let zone = CKRecordZone.ID(zoneName: ShelfCloud.zoneName, ownerName: trade.friendID)
-            let recordName = (trade.direction == .outgoing ? "reply-" : "request-") + trade.request.id.uuidString
-            guard let payloads = try? await cloud.payload(recordName: recordName, in: zone, of: cloud.sharedDB),
-                  !payloads.isEmpty else { continue }
+            let payloads: [SpecimenPayload]
+            #if DEBUG
+            if let simulator {
+                payloads = simulator.payload(for: trade.id)
+            } else {
+                payloads = await fetchPayload(for: trade)
+            }
+            #else
+            payloads = await fetchPayload(for: trade)
+            #endif
+            guard !payloads.isEmpty else { continue }
             await TradeLedger.complete(receiving: payloads,
                                        from: trade.friendName,
                                        giving: trade.giving.map(\.id),
@@ -423,6 +512,12 @@ final class FriendsStore {
             defaults.set(completedTradeIDs.map(\.uuidString), forKey: Keys.completed)
         }
         schedulePublish()
+    }
+
+    private func fetchPayload(for trade: Trade) async -> [SpecimenPayload] {
+        let zone = CKRecordZone.ID(zoneName: ShelfCloud.zoneName, ownerName: trade.friendID)
+        let recordName = (trade.direction == .outgoing ? "reply-" : "request-") + trade.request.id.uuidString
+        return (try? await cloud.payload(recordName: recordName, in: zone, of: cloud.sharedDB)) ?? []
     }
 
     // MARK: Notifications
@@ -482,6 +577,10 @@ final class FriendsStore {
     }
 
     private func saveCache() {
+        #if DEBUG
+        // Simulated friends must never leak into the real cache.
+        if simulator != nil { return }
+        #endif
         let cache = Cache(friends: friends, myRequests: myRequests, myReplies: myReplies,
                           incomingRequests: incomingRequests, incomingReplies: incomingReplies)
         if let data = try? JSONEncoder().encode(cache) {
@@ -519,3 +618,97 @@ final class FriendsStore {
         return (error as? LocalizedError)?.errorDescription ?? "Something went wrong talking to iCloud."
     }
 }
+
+// MARK: - Debug simulation
+
+#if DEBUG
+extension FriendsStore {
+    var isSimulating: Bool { simulator != nil }
+
+    /// Swaps iCloud for simulated friends. The real cache is left on disk and
+    /// comes back when the simulation stops.
+    fileprivate func startSimulation() async {
+        if simulator == nil {
+            simulator = FriendsSimulator()
+            friends = []
+            myRequests = []
+            myReplies = []
+            incomingRequests = []
+            incomingReplies = []
+            pendingInvites = []
+            requestNotificationPermission()
+        }
+        availability = .available
+        myID = "sim-me"
+        problem = nil
+        refreshSimulation(simulator!)
+        await completeReadyTrades()
+        // Stands in for CloudKit's silent pushes.
+        simulatorTask?.cancel()
+        simulatorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                await self?.refresh()
+            }
+        }
+    }
+
+    fileprivate func refreshSimulation(_ simulator: FriendsSimulator) {
+        simulator.tick(myRequests: myRequests, myReplies: myReplies)
+        friends = simulator.friends
+        incomingRequests = simulator.requests
+        incomingReplies = simulator.replies
+        lastRefresh = .now
+        announceNewActivity()
+    }
+
+    fileprivate func simulateSoon() {
+        Task { await refresh() }
+    }
+
+    func setSimulation(_ on: Bool) async {
+        FriendsDebug.isOn = on
+        guard !on else { return await start() }
+        simulatorTask?.cancel()
+        simulatorTask = nil
+        simulator = nil
+        myID = nil
+        friends = []
+        myRequests = []
+        myReplies = []
+        incomingRequests = []
+        incomingReplies = []
+        loadCache()
+        await start()
+    }
+
+    func debugPairFriend() {
+        guard let simulator else { return }
+        let friend = simulator.pairFriend()
+        friends = simulator.friends
+        pendingShareBack = nil
+        _ = friend
+    }
+
+    /// Returns a problem to show, or nil.
+    func debugIncomingRequest() -> String? {
+        guard let simulator, let myID, let context else { return "Simulation is off." }
+        let problem = simulator.sendIncomingRequest(to: myID, myName: displayName, context: context)
+        simulateSoon()
+        return problem
+    }
+
+    /// Makes simulated friends act now, whatever their settings.
+    func debugForceFriends() {
+        guard let simulator else { return }
+        simulator.tick(myRequests: myRequests, myReplies: myReplies, force: true)
+        simulateSoon()
+    }
+
+    func debugSeedShelf(_ count: Int = 6) {
+        guard let context else { return }
+        FriendsSimulator.seedMyShelf(count: count, in: context)
+        simulator?.note("Added \(count) sample squishies to your shelf")
+    }
+}
+#endif

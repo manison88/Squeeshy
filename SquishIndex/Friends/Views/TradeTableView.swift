@@ -52,6 +52,16 @@ struct TradeTableView: View {
         return false
     }
 
+    /// On iPad the table is the root of the detail column, where `dismiss()`
+    /// does nothing — so leaving goes back to looking instead.
+    private func leave() {
+        if showsBack {
+            dismiss()
+        } else {
+            restart()
+        }
+    }
+
     private func restart() {
         session.end()
         session.begin(displayName: store.displayName, userID: store.myUserID, context: modelContext)
@@ -72,6 +82,10 @@ struct TradeTableView: View {
                 Radar()
                     .frame(height: 200)
                     .frame(maxWidth: .infinity)
+
+                #if DEBUG
+                TableDebugControls(session: session)
+                #endif
 
                 VStack(alignment: .leading, spacing: 0) {
                     SectionHeading(title: "Nearby", detail: "\(session.nearby.count)")
@@ -125,6 +139,9 @@ struct TradeTableView: View {
             HStack(alignment: .top, spacing: SquishTheme.Space.lg) {
                 VStack(alignment: .leading, spacing: 0) {
                     tableHeader
+                    #if DEBUG
+                    TableDebugControls(session: session)
+                    #endif
                     board(large: true)
                         .padding(.horizontal, SquishTheme.Space.margin)
                     Spacer()
@@ -147,6 +164,9 @@ struct TradeTableView: View {
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 tableHeader
+                #if DEBUG
+                TableDebugControls(session: session)
+                #endif
                 ScrollView {
                     board(large: false)
                         .padding(.horizontal, SquishTheme.Space.margin)
@@ -174,7 +194,7 @@ struct TradeTableView: View {
         FriendsHeader(title: "Trade table",
                       subtitle: "With \(session.partnerName) · nearby",
                       showsBack: false) {
-            Button("Leave") { dismiss() }
+            Button("Leave") { leave() }
                 .typeStyle(.m1)
                 .foregroundStyle(SquishTheme.quietInk)
                 .frame(minHeight: 44)
@@ -231,7 +251,7 @@ struct TradeTableView: View {
                 message: "Swap the real squishies now. What you got is filed in your index with its measurements, and what you gave moves to your Traded list.",
                 stamp: true) {
             VStack(spacing: SquishTheme.Space.sm) {
-                PrimaryPill(title: "Done") { dismiss() }
+                PrimaryPill(title: "Done") { leave() }
                 SecondaryPill(title: "Trade again") { restart() }
             }
         }

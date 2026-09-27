@@ -15,6 +15,9 @@ struct FriendsView: View {
                 FriendsHeader(title: "Friends", showsBack: showsBack)
 
                 VStack(alignment: .leading, spacing: 0) {
+                    #if DEBUG
+                    FriendsDebugPanel()
+                    #endif
                     FriendsStatusNotices(askingForName: $askingForName)
 
                     if !store.waitingForMe.isEmpty {
@@ -87,7 +90,6 @@ struct FriendsView: View {
                 .padding(.bottom, SquishTheme.Space.sm)
         }
         .toolbar(.hidden, for: .navigationBar)
-        .friendsDestinations()
         .task { await store.refresh() }
     }
 }
@@ -168,6 +170,13 @@ struct AddFriendButton: View {
     }
 
     private func invite() {
+        #if DEBUG
+        // No share sheet to send: the simulated friend "accepts" at once.
+        if store.isSimulating {
+            store.debugPairFriend()
+            return
+        }
+        #endif
         isPreparing = true
         Task {
             defer { isPreparing = false }

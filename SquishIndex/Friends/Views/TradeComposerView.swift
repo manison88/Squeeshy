@@ -16,7 +16,11 @@ struct TradeComposerView: View {
     @State private var isSending = false
     @State private var error: String?
 
-    private var mine: [Squishy] { allSpecimens.filter { !$0.isTraded } }
+    /// Already promised in another open trade? Not offerable again.
+    private var mine: [Squishy] {
+        let promised = store.promisedIDs
+        return allSpecimens.filter { !$0.isTraded && !promised.contains($0.lineageID.uuidString) }
+    }
     private var offeredSpecimens: [Squishy] { mine.filter { offered.contains($0.id) } }
 
     var body: some View {

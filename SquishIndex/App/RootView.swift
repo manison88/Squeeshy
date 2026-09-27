@@ -153,7 +153,10 @@ struct SplitRootView: View {
         case .library:
             LibraryView(showsFriendsButton: false)
         case .friends:
-            NavigationStack { FriendsView(showsBack: false) }
+            NavigationStack {
+                FriendsView(showsBack: false)
+                    .friendsDestinations()
+            }
         case .friend(let id):
             NavigationStack {
                 FriendShelfView(friendID: id, showsBack: false)

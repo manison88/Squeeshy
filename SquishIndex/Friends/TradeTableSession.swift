@@ -67,6 +67,11 @@ final class TradeTableSession: NSObject {
     private var connectedPeer: MCPeerID? = nil
     private var modelContext: ModelContext? = nil
 
+    #if DEBUG
+    /// Debug builds: a pretend second phone, when `FriendsDebug.isOn`.
+    private(set) var simulated: SimulatedTablePartner? = nil
+    #endif
+
     static let serviceType = "squish-table"
 
     // MARK: Derived
@@ -123,6 +128,9 @@ final class TradeTableSession: NSObject {
         self.browser = browser
 
         phase = .looking
+        #if DEBUG
+        startSimulatedPartner()
+        #endif
     }
 
     func end() {
@@ -147,6 +155,9 @@ final class TradeTableSession: NSObject {
         invitationHandler = nil
         invitation = nil
         connectedPeer = nil
+        #if DEBUG
+        simulated = nil
+        #endif
         nearby = []
         mine = []
         theirs = []
@@ -160,6 +171,17 @@ final class TradeTableSession: NSObject {
     // MARK: Connecting
 
     func open(with peer: NearbyPeer) {
+        #if DEBUG
+        if let simulated, peer.peer == simulated.peer {
+            phase = .connecting(peer.name)
+            Task {
+                try? await Task.sleep(for: .seconds(0.8))
+                guard self.simulated === simulated, case .connecting = self.phase else { return }
+                self.peerChanged(peer.peer, to: .connected)
+            }
+            return
+        }
+        #endif
         guard let session else { return }
         browser?.invitePeer(peer.peer, to: session, withContext: nil, timeout: 30)
         phase = .connecting(peer.name)
@@ -245,6 +267,12 @@ final class TradeTableSession: NSObject {
     }
 
     private func send(_ message: Message) {
+        #if DEBUG
+        if let simulated, connectedPeer == simulated.peer {
+            deliverToSimulated(message, simulated)
+            return
+        }
+        #endif
         guard let session, !session.connectedPeers.isEmpty,
               let data = try? JSONEncoder().encode(message) else { return }
         try? session.send(data, toPeers: session.connectedPeers, with: .reliable)
@@ -281,12 +309,22 @@ final class TradeTableSession: NSObject {
             send(.table(mine))
         case .notConnected:
             guard peer == connectedPeer || connectedPeer == nil else { return }
-            if case .traded = phase { return }
+            switch phase {
+            case .traded, .idle, .ended:
+                return
+            case .looking:
+                // A peer that never connected — nothing to close.
+                return
+            case .connecting, .atTable:
+                break
+            }
             let name = peer.displayName
+            let wasAtTable = connectedPeer != nil
             connectedPeer = nil
             theirs = []
             theirVote = nil
-            phase = .ended("\(name) left the table. Nothing was traded.")
+            phase = .ended(wasAtTable ? "\(name) left the table. Nothing was traded."
+                                      : "\(name) didn't join. Nothing was traded.")
         case .connecting:
             break
         @unknown default:
@@ -298,13 +336,21 @@ final class TradeTableSession: NSObject {
 // MARK: - MultipeerConnectivity delegates
 
 extension TradeTableSession: MCSessionDelegate {
+    // Callbacks from a session this table already closed (after Leave or
+    // Look again) are dropped, so they can't end or feed the new table.
     nonisolated func session(_ session: MCSession, peer peerID: MCPeerID, didChange state: MCSessionState) {
-        Task { @MainActor in self.peerChanged(peerID, to: state) }
+        Task { @MainActor in
+            guard session === self.session else { return }
+            self.peerChanged(peerID, to: state)
+        }
     }
 
     nonisolated func session(_ session: MCSession, didReceive data: Data, fromPeer peerID: MCPeerID) {
         guard let message = try? JSONDecoder().decode(Message.self, from: data) else { return }
-        Task { @MainActor in self.handle(message) }
+        Task { @MainActor in
+            guard session === self.session, peerID == self.connectedPeer else { return }
+            self.handle(message)
+        }
     }
 
     nonisolated func session(_ session: MCSession, didReceive stream: InputStream,
@@ -352,3 +398,70 @@ extension TradeTableSession: MCNearbyServiceBrowserDelegate {
         Task { @MainActor in self.nearby.removeAll { $0.peer == peerID } }
     }
 }
+
+// MARK: - Debug simulation
+
+#if DEBUG
+extension TradeTableSession {
+    fileprivate func startSimulatedPartner() {
+        guard FriendsDebug.isOn, let simulator = FriendsStore.shared.simulator,
+              let friend = simulator.friends.first else { return }
+        let partner = SimulatedTablePartner(friendID: friend.id, name: friend.name)
+        partner.deliver = { [weak self, weak partner] message in
+            partner?.inbound.post {
+                guard let self, let partner, self.simulated === partner,
+                      self.connectedPeer == partner.peer else { return }
+                self.handle(Self.convert(message))
+            }
+        }
+        simulated = partner
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            guard self.simulated === partner, self.phase == .looking else { return }
+            self.nearby.insert(NearbyPeer(peer: partner.peer, isFriend: true), at: 0)
+        }
+    }
+
+    private func deliverToSimulated(_ message: Message, _ partner: SimulatedTablePartner) {
+        let converted: SimulatedTablePartner.Message = switch message {
+        case .table(let items): .table(items)
+        case .vote(let key, let yes): .vote(key: key, yes: yes)
+        case .payload(let key, let specimens): .payload(key: key, specimens: specimens)
+        case .received(let key): .received(key: key)
+        }
+        partner.outbound.post { [weak self] in
+            guard self?.simulated === partner else { return }
+            partner.receive(converted)
+        }
+    }
+
+    private static func convert(_ message: SimulatedTablePartner.Message) -> Message {
+        switch message {
+        case .table(let items): .table(items)
+        case .vote(let key, let yes): .vote(key: key, yes: yes)
+        case .payload(let key, let specimens): .payload(key: key, specimens: specimens)
+        case .received(let key): .received(key: key)
+        }
+    }
+
+    /// The simulated friend taps "Open table" on their phone.
+    func debugSimulatedInvite() {
+        guard let partner = simulated, phase == .looking, invitationHandler == nil else { return }
+        invitationHandler = { [weak self] join, _ in
+            guard join else { return }
+            Task { @MainActor in
+                try? await Task.sleep(for: .seconds(0.6))
+                guard let self, self.simulated === partner else { return }
+                self.peerChanged(partner.peer, to: .connected)
+            }
+        }
+        invitation = NearbyPeer(peer: partner.peer, isFriend: true)
+    }
+
+    /// The simulated friend walks away mid-table.
+    func debugSimulatedLeaves() {
+        guard let partner = simulated, connectedPeer == partner.peer else { return }
+        peerChanged(partner.peer, to: .notConnected)
+    }
+}
+#endif

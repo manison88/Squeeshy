@@ -97,7 +97,7 @@ final class CaptureFlow {
     }
 
     /// Never auto-rejects a capture — the twin card is advisory. SPEC.md §4.
-    private static func bestMatch(for print: Data,
+    nonisolated private static func bestMatch(for print: Data,
                                   in library: [(id: UUID, print: Data)]) -> DuplicateMatch? {
         guard !print.isEmpty else { return nil }
         var best: DuplicateMatch?
