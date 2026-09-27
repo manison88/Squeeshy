@@ -66,7 +66,9 @@ fix is a separate zone per friend, which is more code; see §9 Q6.
    private invite link, most often through Messages.
 2. The friend taps the link → Squish Index opens → *"Maya wants to be friends"* → **Accept**.
 3. Accepting also sends Maya an invite back, so friendship is always **mutual**. Until both
-   sides accept, nothing is visible.
+   sides accept, nothing is visible. *To verify in a prototype:* whether Zoe's app can add
+   Maya to its own share automatically (using the owner identity on Maya's share), or whether
+   Zoe must tap through a one-screen "Send your invite back" step. Either is acceptable.
 4. **Remove friend** revokes the share immediately; their shelf disappears from your app and
    yours from theirs.
 
