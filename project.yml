@@ -1,0 +1,108 @@
+name: Squeeshy
+options:
+  bundleIdPrefix: com.squeeshy
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    # xcodegen rewrites the whole project, so anything set in Xcode's Signing &
+    # Capabilities editor is discarded on the next `xcodegen generate`. The team has
+    # to live here to survive.
+    DEVELOPMENT_TEAM: H483GY2MQ4
+    CODE_SIGN_STYLE: Automatic
+    # Signing is skipped only for the simulator, where it is pointless and where the
+    # embedded GLTFKit2 framework would otherwise fail to sign. Device and archive
+    # builds sign normally — a blanket CODE_SIGNING_ALLOWED=NO is what produced
+    # unsigned archives and the "assign a team to the targets" error in Organizer.
+    "CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]": NO
+    "CODE_SIGN_IDENTITY[sdk=iphoneos*]": Apple Development
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    SWIFT_STRICT_CONCURRENCY: minimal
+
+# The 3D models come back from TRELLIS as glTF binaries. SceneKit and RealityKit
+# both read USDZ but neither reads GLB, and converting on the way in keeps a
+# conversion step off the server.
+packages:
+  GLTFKit2:
+    url: https://github.com/warrenm/GLTFKit2
+    from: "0.5.0"
+
+targets:
+  Squeeshy:
+    type: application
+    platform: iOS
+    sources:
+      - path: Squeeshy
+    dependencies:
+      - package: GLTFKit2
+    # A base Info.plist that the generated keys merge on top of. It exists for one
+    # key: App Store validation reads CFBundleIconName at the top level, actool only
+    # ever writes it nested inside CFBundleIcons, and INFOPLIST_KEY_CFBundleIconName
+    # resolves as a build setting but is dropped on the floor by the plist generator.
+    # A real file is the only place the validator reliably finds it.
+    info:
+      path: Squeeshy/Info.plist
+      properties:
+        CFBundleIconName: AppIcon
+        # Pinned to the build settings rather than left at xcodegen's 1.0/1
+        # defaults, so the archive's version matches MARKETING_VERSION whichever
+        # way the generated keys and this file end up merging.
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        # Names the set in Assets.xcassets. Without it the catalog compiler emits no
+        # icons at all, which is what left the bundle with no 120x120 PNG.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        PRODUCT_BUNDLE_IDENTIFIER: com.squeeshy.app
+        PRODUCT_NAME: Squeeshy
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        # Portrait-only on the phone, where a landscape shelf list buys nothing. The
+        # iPad rotates freely: it is a device people leave in a stand, and iPadOS
+        # expects apps to resize rather than pin themselves to one orientation.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_CFBundleDisplayName: Squeeshy
+        INFOPLIST_KEY_NSCameraUsageDescription: "Squeeshy uses the camera to photograph your squeeshies and read their colour, type, shape and size."
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Squeeshy can add squeeshies from photos you have already taken."
+        # No forced status bar style: it is driven by the theme now, and pinning it to
+        # light content left white numerals on a white bar in light mode.
+        # 1,2 = iPhone and iPad. Deliberately not setting UIRequiresFullScreen: iPadOS
+        # expects apps to survive being resized in Stage Manager and Split View.
+        TARGETED_DEVICE_FAMILY: "1,2"
+
+  # Sheets and menus are where this app breaks, and neither the compiler nor a
+  # screenshot driven by launch arguments can see a dropped presentation — only
+  # something that taps. Hence a UI test target rather than unit tests.
+  SqueeshyUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: SqueeshyUITests
+    dependencies:
+      - target: Squeeshy
+    settings:
+      base:
+        TEST_TARGET_NAME: Squeeshy
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  Squeeshy:
+    build:
+      targets:
+        Squeeshy: all
+        SqueeshyUITests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - SqueeshyUITests
