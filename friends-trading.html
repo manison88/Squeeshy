@@ -370,6 +370,55 @@ body {
   /* Trades detail on iPad: two columns */
   .tcols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; padding-top: 13px; }
   .bigswap .plate { border-radius: 19px; }
+  /* ---- Trade table (in person) ---- */
+  .board { display: grid; grid-template-columns: 1fr 34px 1fr; align-items: start; gap: 8px; }
+  .seat .who { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .seatplate { position: relative; aspect-ratio: 1; border-radius: 19px; background: var(--chalk);
+               border: var(--hairline) solid var(--line); overflow: hidden; }
+  .seatplate.empty { border: 1.5px dashed #B9B6AD; background: transparent;
+                     display: flex; align-items: center; justify-content: center; text-align: center; padding: 13px; }
+  .seatplate .more { position: absolute; right: 8px; bottom: 8px; }
+  .seat .nm { margin-top: 8px; min-height: 21px; }
+  .midswap { display: flex; align-items: center; justify-content: center; height: 100%; padding-top: 30px; color: #5F6269; }
+  /* Vote marks: shape AND word, never colour alone (SPEC §3). */
+  .vote { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 4px;
+          border-radius: 999px; border: var(--hairline) solid var(--line); background: var(--chalk);
+          font-family: var(--data); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: #5F6269; }
+  .vote i { width: 18px; height: 18px; border-radius: 999px; border: 1.5px dashed #B9B6AD; display: flex;
+            align-items: center; justify-content: center; }
+  .vote.yes { color: var(--ink); border-color: var(--ink); }
+  .vote.yes i { background: var(--ink); border: 0; }
+  .vote.no { color: var(--ink); }
+  .vote.no i { border: 1.5px solid var(--ink); }
+  .vote.hidden i { border-style: solid; background: var(--line); border-color: var(--line); }
+  .votebar { display: flex; gap: 13px; }
+  .votebtn { flex: 1; height: 64px; border-radius: 999px; cursor: pointer; display: flex; align-items: center;
+             justify-content: center; gap: 10px; font-family: var(--body); font-weight: 600; font-size: 16px; }
+  .votebtn.x  { background: var(--chalk); color: var(--ink); border: 1.5px solid var(--ink); }
+  .votebtn.ok { background: var(--ink); color: var(--chalk); border: 0; }
+  .votebtn[disabled] { opacity: .3; cursor: default; }
+  .votebtn[aria-pressed="true"].x { background: var(--ink); color: var(--chalk); }
+  .votebtn[aria-pressed="true"].ok { box-shadow: 0 0 0 3px var(--putty), 0 0 0 5px var(--ink); }
+  .status { text-align: center; min-height: 15px; }
+  .radar { position: relative; height: 200px; display: flex; align-items: center; justify-content: center; }
+  .radar i { position: absolute; border-radius: 999px; border: var(--hairline) solid var(--line); }
+  .shelfstrip { display: flex; gap: 13px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .shelfstrip::-webkit-scrollbar { display: none; }
+  .shelfstrip .pick { width: 108px; flex: none; }
+  .shelfstrip .pick .plate { border-radius: 15px; }
+  .result { position: absolute; inset: 0; background: var(--putty); z-index: 4; display: none;
+            flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 34px; }
+  .result.show { display: flex; }
+  .stamp { font-family: var(--data); font-weight: 500; font-size: 13px; letter-spacing: .3em; text-transform: uppercase;
+           border: 2px solid var(--ink); border-radius: 8px; padding: 8px 14px; transform: rotate(-4deg); }
+  .demo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 13px; }
+  .demo .chip[aria-pressed="true"] { background: var(--ink); color: var(--chalk); border-color: var(--ink); }
+  @media (prefers-reduced-motion: no-preference) {
+    .seatplate.drop { animation: drop .32s cubic-bezier(.32,.72,0,1); }
+    @keyframes drop { from { transform: scale(.9); opacity: 0; } to { transform: none; opacity: 1; } }
+    .result.show .stamp { animation: stamp .42s cubic-bezier(.32,.72,0,1); }
+    @keyframes stamp { from { transform: rotate(-4deg) scale(1.6); opacity: 0; } to { transform: rotate(-4deg) scale(1); opacity: 1; } }
+  }
 </style>
 
 <div class="page">
@@ -645,6 +694,109 @@ body {
           </div>
         </div>
       </section>
+    </div></div>
+  </div>
+
+  <!-- ===================================================== Trade table -->
+  <div class="section-h">Trade table &middot; in person</div>
+  <p class="section-p">When two friends are together, either one opens a <b>trade table</b>. The
+     phones connect directly, with no internet needed. Each person puts squishies in, both
+     people see both sides live, and each votes ✓ or ✗. It only trades when both say ✓.
+     <b>Changing what's on the table clears both votes</b>, so nobody can swap after the other
+     person says yes.</p>
+
+  <div class="rack">
+    <div class="slot">
+      <div class="cap"><b>T1</b><span>Open a table · nearby</span></div>
+      <div class="device"><div class="screen">
+        <div class="safe-t"></div>
+        <div class="mx">
+          <div class="topbar"><button class="textbtn">&lsaquo; Friends</button><span class="M1 dim">In person</span><span style="width:44px"></span></div>
+          <div class="D2" style="margin-top:8px">Trade in person</div>
+          <p class="B1 dim" style="margin-top:4px">Hold your phones near each other. Both need Squish Index open.</p>
+        </div>
+        <div class="radar" aria-hidden="true">
+          <i style="width:120px;height:120px"></i><i style="width:190px;height:190px"></i>
+          <span class="M1 dim" style="background:var(--putty);padding:4px 8px">Looking nearby</span>
+        </div>
+        <div class="mx" data-nearby></div>
+      </div></div>
+      <p class="note">Friends show first. Someone who isn't a friend yet can still be asked, but
+         they have to accept, and nothing is shared until they do.</p>
+    </div>
+
+    <div class="slot">
+      <div class="cap"><b>T2</b><span>The other phone · join</span></div>
+      <div class="device"><div class="screen">
+        <div class="safe-t"></div>
+        <div class="mx" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
+          <span data-mono-maya></span>
+          <div class="D2" style="margin-top:22px">Maya wants to open<br>a trade table</div>
+          <p class="B1 dim" style="margin-top:8px;max-width:280px">You'll each put squishies on the table and vote. Nothing trades unless you both say yes.</p>
+        </div>
+        <div class="cta-bar" style="position:static;margin:0 22px 34px">
+          <button class="btn btn-line"><span class="B2">Not now</span></button>
+          <button class="btn btn-ink"><span class="B2">Join table</span></button>
+        </div>
+      </div></div>
+      <p class="note">Joining always takes a tap from the other person. Phones never connect on their own.</p>
+    </div>
+
+    <div class="slot">
+      <div class="cap"><b>T3</b><span>Table · putting in</span></div>
+      <div class="device"><div class="screen" data-phone-board="place"></div></div>
+      <p class="note">Tap a squishy on your shelf to put it on the table. Tap it again on the table
+         to take it off. You can put in more than one.</p>
+    </div>
+
+    <div class="slot">
+      <div class="cap"><b>T4</b><span>Table · voting</span></div>
+      <div class="device"><div class="screen" data-phone-board="vote"></div></div>
+      <p class="note">Both sides are filled, so the vote buttons light up. Each person's ✓ or ✗
+         shows on their side as a shape and a word, not just a colour.</p>
+    </div>
+
+    <div class="slot">
+      <div class="cap"><b>T5</b><span>Both said yes</span></div>
+      <div class="device"><div class="screen">
+        <div class="safe-t"></div>
+        <div class="mx" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
+          <span class="stamp">Traded</span>
+          <div style="display:flex;gap:13px;align-items:center;margin-top:34px" data-traded></div>
+          <div class="D3" style="margin-top:22px">Sky Whale is yours</div>
+          <p class="B1 dim" style="margin-top:8px;max-width:290px">Swap the real squishies now. Sky Whale is filed in your index with Zoe's measurements. Strawberry Mochi moves to your Traded list.</p>
+        </div>
+        <div class="cta-bar" style="position:static;margin:0 22px 34px">
+          <button class="btn btn-line"><span class="B2">Trade again</span></button>
+          <button class="btn btn-ink"><span class="B2">Done</span></button>
+        </div>
+      </div></div>
+      <p class="note">The trade is recorded on both phones at the same moment, so there's no
+         separate "handed over" step. The toys are right there.</p>
+    </div>
+  </div>
+
+  <div class="islot" style="margin-top:34px">
+    <div class="cap"><b>P3</b><span>iPad · trade table · live</span></div>
+    <div class="demo">
+      <span class="M1 dim">Demo · Zoe will vote</span>
+      <button class="chip" aria-pressed="true" data-zoe="yes">✓ Yes</button>
+      <button class="chip" aria-pressed="false" data-zoe="no">✗ No</button>
+      <span class="M1 dim" style="margin-left:13px">Put a squishy in from your shelf, then vote.</span>
+    </div>
+    <div class="ifit"><div class="ipad" id="ipad3" style="flex-direction:column">
+      <div style="padding:26px 34px 0;display:flex;align-items:flex-end;justify-content:space-between">
+        <div><div class="D2">Trade table</div><div class="M1 dim" style="margin-top:4px">With Zoe &middot; connected nearby</div></div>
+        <button class="textbtn" data-reset>Clear table</button>
+      </div>
+      <div style="flex:1;display:grid;grid-template-columns:1fr 420px;gap:34px;padding:22px 34px 0;min-height:0">
+        <div data-ipad-board></div>
+        <div style="display:flex;flex-direction:column;min-height:0">
+          <div class="M1 ink" style="margin-bottom:13px">Your shelf &middot; tap to put in</div>
+          <div class="pgrid4" style="grid-template-columns:repeat(3,1fr);overflow:auto" data-ipad-shelf></div>
+        </div>
+      </div>
+      <div class="result" data-result></div>
     </div></div>
   </div>
 </div>
@@ -1121,6 +1273,118 @@ body {
     setTimeout(function () { t.classList.remove("show"); }, 2200);
   });
   showFriend("zoe");
+
+  /* ---------- trade table (in person) ---------- */
+  var CHECK_S = '<svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.9" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var X_S = '<svg width="9" height="9" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="#14151A" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  function voteChip(v) {
+    if (v === "yes") return '<span class="vote yes"><i>' + CHECK_S + '</i>Yes</span>';
+    if (v === "no") return '<span class="vote no"><i>' + X_S + '</i>No</span>';
+    return '<span class="vote"><i></i>Thinking</span>';
+  }
+  function seatHTML(label, items, vote, mine) {
+    var plate;
+    if (!items.length) {
+      plate = '<div class="seatplate empty"><span class="M1 dim">' + (mine ? "Tap a squishy<br>to put it in" : "Waiting for<br>Zoe") + '</span></div>';
+    } else {
+      plate = '<div class="seatplate drop"' + (mine ? ' data-takeout="' + items[0].id + '" style="cursor:pointer"' : '') + '>' + photo(items[0]) +
+        (items.length > 1 ? '<span class="tag more">+' + (items.length - 1) + ' more</span>' : '') + '</div>';
+    }
+    return '<div class="seat"><div class="who"><span class="M1 ink">' + label + '</span>' + voteChip(vote) + '</div>' + plate +
+      '<div class="nm D4">' + items.map(function (s) { return s.name; }).join(" + ") + '</div>' +
+      (items.length ? '<div class="M1 dim" style="margin-top:3px">' + items.map(function (s) { return "Squish " + pad(s.squish); }).join(" · ") + '</div>' : '') + '</div>';
+  }
+  function boardHTML(st, big) {
+    var both = st.mine.length && st.theirs.length;
+    var status = !st.mine.length ? "Put something on the table" :
+      !st.theirs.length ? "Waiting for Zoe to put one in" :
+      st.myVote === "no" || st.theirVote === "no" ? "Someone said no · change what's on the table to try again" :
+      !st.myVote ? "Both sides ready · vote" :
+      !st.theirVote ? "Waiting for Zoe to vote" : "Both said yes";
+    return '<div class="board">' + seatHTML(big ? "You put in" : "You", st.mine, st.myVote, true) +
+      '<div class="midswap">' + SWAP + '</div>' + seatHTML(big ? "Zoe puts in" : "Zoe", st.theirs, st.theirVote, false) + '</div>' +
+      '<div class="M1 dim status" style="margin-top:' + (big ? 34 : 22) + 'px">' + status + '</div>' +
+      '<div class="votebar" style="margin-top:13px">' +
+        '<button class="votebtn x" data-vote="no" aria-pressed="' + (st.myVote === "no") + '"' + (both ? '' : ' disabled') + '>' + '<svg width="14" height="14" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>No trade</button>' +
+        '<button class="votebtn ok" data-vote="yes" aria-pressed="' + (st.myVote === "yes") + '"' + (both ? '' : ' disabled') + '>' + '<svg width="16" height="16" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>Trade</button>' +
+      '</div>';
+  }
+  function phoneBoard(st) {
+    return '<div class="safe-t"></div><div class="mx">' +
+      '<div class="topbar"><button class="textbtn">Leave</button><span class="M1 dim">With Zoe &middot; nearby</span><span style="width:44px"></span></div>' +
+      '<div class="D2" style="margin-top:8px">Trade table</div></div>' +
+      '<div class="mx" style="padding-top:13px">' + boardHTML(st, false) + '</div>' +
+      '<div style="flex:1"></div><div class="mx" style="padding-bottom:34px"><div class="M1 ink" style="margin-bottom:8px">Your shelf</div>' +
+      '<div class="shelfstrip">' + MINE.map(function (s) {
+        var on = st.mine.indexOf(s) >= 0;
+        return '<button class="pick" aria-pressed="' + on + '">' + '<div class="plate">' + photo(s) + '<span class="box">' + CHECK + '</span></div><div class="B3 body-600 cardname">' + s.name + '</div></button>';
+      }).join("") + '</div></div>';
+  }
+  var zoeT = FRIENDS.zoe.items[3];
+  document.querySelector('[data-phone-board="place"]').innerHTML = phoneBoard({ mine: [MINE[0]], theirs: [], myVote: null, theirVote: null });
+  document.querySelector('[data-phone-board="vote"]').innerHTML = phoneBoard({ mine: [MINE[0]], theirs: [zoeT], myVote: "yes", theirVote: null });
+  document.querySelector("[data-traded]").innerHTML =
+    '<div class="plate" style="width:120px;border-radius:19px">' + photo(MINE[0]) + '</div><span class="dim">' + SWAP + '</span>' +
+    '<div class="plate" style="width:120px;border-radius:19px">' + photo(zoeT) + '</div>';
+  document.querySelector("[data-mono-maya]").innerHTML = mono4(FRIENDS.maya).replace('class="mono4"', 'class="mono4" style="width:88px;height:88px;border-radius:22px"');
+  document.querySelector("[data-nearby]").innerHTML =
+    '<div class="sechead" style="padding-top:0"><span class="M1 ink">Nearby</span><span class="M1 dim">2</span></div>' +
+    '<div class="frow">' + mono4(FRIENDS.zoe) + '<div class="grow"><div class="D4">Zoe</div><div class="M1 dim" style="margin-top:3px">Friend &middot; right here</div></div><button class="btn btn-ink btn-sm"><span class="M1" style="color:var(--chalk)">Open table</span></button></div>' +
+    '<div class="frow"><span class="mono4 pending"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="6" r="3" fill="none" stroke="#74777E" stroke-width="1.4"/><path d="M2.5 14c.8-3 3-4.5 5.5-4.5s4.7 1.5 5.5 4.5" fill="none" stroke="#74777E" stroke-width="1.4" stroke-linecap="round"/></svg></span><div class="grow"><div class="D4">Sam\'s iPad</div><div class="M1 dim" style="margin-top:3px">Not a friend yet</div></div><button class="btn btn-line btn-sm"><span class="M1">Ask</span></button></div>';
+
+  /* live iPad table */
+  (function () {
+    var root = document.getElementById("ipad3");
+    var boardEl = root.querySelector("[data-ipad-board]"), shelfEl = root.querySelector("[data-ipad-shelf]"), resEl = root.querySelector("[data-result]");
+    var zoeWill = "yes", timer = null;
+    var st = { mine: [], theirs: [], myVote: null, theirVote: null };
+    document.querySelectorAll("[data-zoe]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        zoeWill = b.getAttribute("data-zoe");
+        document.querySelectorAll("[data-zoe]").forEach(function (c) { c.setAttribute("aria-pressed", String(c === b)); });
+      });
+    });
+    function render() {
+      boardEl.innerHTML = boardHTML(st, true);
+      shelfEl.innerHTML = MINE.map(function (s) {
+        var on = st.mine.indexOf(s) >= 0;
+        return '<button class="pick" data-put="' + s.id + '" aria-pressed="' + on + '" aria-label="' + (on ? "Take off " : "Put in ") + s.name + '"><div class="plate">' + photo(s) + '<span class="box">' + CHECK + '</span></div><div class="B3 body-600 cardname">' + s.name + '</div><div class="M2 ink" style="margin-top:2px">' + pad(s.squish) + '</div></button>';
+      }).join("");
+    }
+    function later(fn, ms) { clearTimeout(timer); timer = setTimeout(function () { fn(); render(); }, ms); }
+    function changed() {                    // any change to the table clears both votes
+      st.myVote = null; st.theirVote = null;
+      if (st.mine.length && !st.theirs.length) later(function () { st.theirs = [zoeT]; }, 1100);
+    }
+    function settle() {
+      if (st.myVote === "yes" && st.theirVote === "yes") {
+        resEl.innerHTML = '<span class="stamp">Traded</span>' +
+          '<div style="display:flex;gap:13px;align-items:center;margin-top:34px"><div class="plate" style="width:150px;border-radius:19px">' + photo(st.mine[0]) + '</div><span class="dim">' + SWAP + '</span><div class="plate" style="width:150px;border-radius:19px">' + photo(zoeT) + '</div></div>' +
+          '<div class="D3" style="margin-top:22px">' + zoeT.name + ' is yours</div>' +
+          '<p class="B1 dim" style="margin-top:8px;max-width:420px">Swap the real squishies now. It\'s filed in your index with Zoe\'s measurements, and ' + st.mine.map(function (s) { return s.name; }).join(" and ") + ' moves to your Traded list.</p>' +
+          '<button class="btn btn-ink" style="margin-top:26px;width:240px" data-again><span class="B2">Done</span></button>';
+        resEl.classList.add("show");
+      }
+    }
+    root.addEventListener("click", function (e) {
+      var put = e.target.closest("[data-put]"), out = e.target.closest("[data-takeout]"), v = e.target.closest("[data-vote]");
+      if (put) {
+        var s = byId(put.getAttribute("data-put")), i = st.mine.indexOf(s);
+        if (i >= 0) st.mine.splice(i, 1); else st.mine.push(s);
+        changed(); render();
+      } else if (out) {
+        st.mine = []; changed(); render();
+      } else if (v && !v.disabled) {
+        st.myVote = v.getAttribute("data-vote"); render();
+        if (st.myVote === "yes" && !st.theirVote) later(function () { st.theirVote = zoeWill; settle(); }, 1000);
+        else settle();
+      } else if (e.target.closest("[data-again]") || e.target.closest("[data-reset]")) {
+        resEl.classList.remove("show"); clearTimeout(timer);
+        st = { mine: [], theirs: [], myVote: null, theirVote: null }; render();
+      }
+    });
+    render();
+  })();
 
   /* ---------- scale iPad frames to the page width ---------- */
   function fit() {

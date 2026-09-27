@@ -36,6 +36,24 @@ final class Squishy {
     var surface: String?
     var tags: [String]
 
+    // Friends & trading (Milestone 6). All optional so existing stores migrate
+    // without a schema version: an absent value means "photographed here,
+    // held, open to trade". Design/FRIENDS-AND-TRADING.md §5.
+
+    /// Stable across every owner. `nil` for things photographed on this device,
+    /// whose lineage is their own `id`.
+    var originID: UUID?
+    /// `nil` while held; `"TRADED"` once it has gone to a friend.
+    var tradeStatus: String?
+    var tradedTo: String?
+    var tradedAt: Date?
+    /// Whose shelf it came from, when it arrived by trade.
+    var acquiredFrom: String?
+    /// `true` hides the Request button on friends' copies of this shelf.
+    var keepFlag: Bool?
+    /// JSON-encoded `[ProvenanceEntry]` — earlier owners, oldest first.
+    var provenanceData: Data?
+
     init(
         id: UUID = UUID(),
         name: String,
@@ -130,6 +148,47 @@ extension Squishy {
             parts.append("\(paletteHex.count) colours.")
         }
         return parts.joined(separator: " ")
+    }
+}
+
+// MARK: - Friends & trading
+
+/// One earlier owner of a specimen. The current owner is never listed: their
+/// tenure is `addedAt` to now.
+struct ProvenanceEntry: Codable, Hashable {
+    var owner: String
+    var from: Date
+    var to: Date
+}
+
+extension Squishy {
+    static let tradedStatus = "TRADED"
+
+    /// The identity that follows a toy from shelf to shelf.
+    var lineageID: UUID { originID ?? id }
+
+    var isTraded: Bool { tradeStatus == Self.tradedStatus }
+
+    var isKeeping: Bool {
+        get { keepFlag ?? false }
+        set { keepFlag = newValue ? true : nil }
+    }
+
+    var provenance: [ProvenanceEntry] {
+        get {
+            guard let provenanceData else { return [] }
+            return (try? JSONDecoder().decode([ProvenanceEntry].self, from: provenanceData)) ?? []
+        }
+        set { provenanceData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue) }
+    }
+
+    /// Changes whenever anything a friend can see changes, so the shelf only
+    /// re-uploads what moved.
+    var shelfRevision: String {
+        [name, String(squishLevel), isKeeping ? "K" : "O", String(photo.count),
+         widthMM.map { String(format: "%.1f", $0) } ?? "-",
+         heightMM.map { String(format: "%.1f", $0) } ?? "-",
+         paletteHex.joined(separator: ",")].joined(separator: "|")
     }
 }
 
