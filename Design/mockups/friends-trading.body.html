@@ -1,0 +1,718 @@
+<!--
+  Squish Index — Friends & Trading mockups (proposed Milestone 6)
+
+  Visual target for Design/FRIENDS-AND-TRADING.md. Built from the same
+  locked tokens and type scale as body.html — no new visual language.
+
+  iPhone: Friends lives behind a header button on the Grid (open question 1
+  in the proposal, answered here). iPad: it lives in a sidebar, and the
+  friend's shelf opens beside it in a split view.
+
+  Interactive: on the iPad split view, pick a friend in the sidebar, tap
+  "Request" on any open-to-trade specimen, choose what to offer, send.
+  On the iPhone picker (F3), tap your squishies to toggle the offer.
+
+  Assembled by build.py — edit this file, not friends-trading.html.
+-->
+
+<style>
+  /* ---- page chrome (not part of the app) ---- */
+  .page      { padding: 34px 16px 56px; max-width: 2200px; margin: 0 auto; }
+  .page-head { max-width: 680px; margin-bottom: 34px; }
+  .page-head h1 { font-family: var(--display); font-weight: 800; letter-spacing: -0.02em;
+                  font-size: 34px; margin-bottom: 8px; text-wrap: balance; }
+  .page-head p  { font-family: var(--body); font-size: 15px; line-height: 21px; color: #5F6269; }
+  .section-h { font-family: var(--display); font-weight: 800; letter-spacing: -0.02em;
+               font-size: 22px; margin: 56px 0 6px; }
+  .section-p { font-family: var(--body); font-size: 15px; line-height: 21px; color: #5F6269;
+               max-width: 680px; margin-bottom: 26px; }
+  .rack { display: flex; flex-wrap: wrap; gap: 34px; align-items: flex-start; }
+  .slot { width: 393px; max-width: 100%; }
+  .slot > .cap, .islot > .cap { margin-bottom: 13px; }
+  .cap b { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+           text-transform: uppercase; font-weight: 500; color: var(--ink); }
+  .cap span { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+              text-transform: uppercase; color: #5F6269; margin-left: 8px; }
+  .note { font-family: var(--body); font-size: 13px; line-height: 18px; color: #5F6269;
+          margin-top: 13px; max-width: 393px; }
+  .islot { width: 100%; margin-bottom: 34px; }
+  .ifit  { width: 100%; overflow: hidden; }       /* JS scales the iPad to fit */
+  .ifit > .ipad { transform-origin: 0 0; }
+
+  /* ---- devices ---- */
+  .device { width: 393px; height: 852px; border-radius: 44px; overflow: hidden;
+            position: relative; background: var(--putty);
+            border: var(--hairline) solid var(--line); }
+  .ipad   { width: 1180px; height: 820px; border-radius: 26px; overflow: hidden;
+            position: relative; background: var(--putty);
+            border: var(--hairline) solid var(--line); display: flex; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .safe-t { height: 59px; flex: none; }
+  .mx     { padding-left: 22px; padding-right: 22px; }
+  .scroll { flex: 1; overflow: hidden; }
+
+  /* ---- app type tokens (UX-SPEC §2.1) ---- */
+  .D1 { font-family: var(--display); font-weight: 800; font-size: 44px; letter-spacing: -0.02em; line-height: 1; }
+  .D2 { font-family: var(--display); font-weight: 800; font-size: 26px; letter-spacing: -0.02em; line-height: 34px; }
+  .D3 { font-family: var(--display); font-weight: 600; font-size: 24px; letter-spacing: -0.02em; line-height: 29px; }
+  .D4 { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: -0.02em; line-height: 21px; }
+  .B1 { font-family: var(--body); font-weight: 400; font-size: 15px; line-height: 21px; }
+  .B2 { font-family: var(--body); font-weight: 600; font-size: 16px; }
+  .B3 { font-family: var(--body); font-weight: 400; font-size: 13px; line-height: 18px; }
+  .M1 { font-family: var(--data); font-weight: 400; font-size: 10px;
+        letter-spacing: 0.16em; text-transform: uppercase; }
+  .M2 { font-family: var(--data); font-weight: 500; font-size: 12px; letter-spacing: 0.04em; }
+  .dim { color: #5F6269; }
+  .ink { color: var(--ink); }
+
+  /* ---- shared pieces ---- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; height: 44px; }
+  .iconbtn { width: 44px; height: 44px; border-radius: 999px; border: var(--hairline) solid var(--line);
+             background: var(--chalk); display: inline-flex; align-items: center; justify-content: center;
+             color: var(--ink); cursor: pointer; position: relative; }
+  .iconbtn .chip-badge { position: absolute; top: -3px; right: -3px; }
+  .textbtn { font-family: var(--data); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+             color: #5F6269; background: none; border: 0; cursor: pointer; min-height: 44px; }
+  .seg   { display: flex; height: 36px; border: var(--hairline) solid var(--line);
+           border-radius: var(--r-pill); background: var(--chalk); padding: 3px; gap: 3px; }
+  .seg button { flex: 1; border: 0; border-radius: var(--r-pill); background: none;
+                font-family: var(--data); font-size: 10px; letter-spacing: 0.16em;
+                text-transform: uppercase; color: #5F6269; cursor: pointer; }
+  .seg button[aria-selected="true"] { background: var(--ink); color: var(--chalk); }
+  .grid  { display: grid; grid-template-columns: 1fr 1fr; column-gap: 13px; row-gap: 22px; }
+  .plate { width: 100%; aspect-ratio: 1; border-radius: var(--r-plate);
+           border: var(--hairline) solid var(--line); background: var(--chalk);
+           overflow: hidden; display: block; position: relative; }
+  .cardname { margin-top: 8px; }
+  .meta { margin-top: 5px; height: 15px; display: flex; align-items: center; justify-content: space-between; }
+  .pal  { display: flex; gap: 3px; }
+  .pal i { width: 13px; height: 13px; border-radius: 2px; display: block;
+           box-shadow: inset 0 0 0 1px rgba(20,21,26,.08); }
+  .rule { height: 1px; background: var(--line); }
+  .sechead { display: flex; align-items: baseline; justify-content: space-between;
+             padding: 22px 0 8px; }
+
+  /* Keeping tag sits on the plate; a status, so it says so in words (§3). */
+  .tag { position: absolute; left: 8px; top: 8px; height: 22px; padding: 0 8px;
+         border-radius: 999px; background: rgba(255,255,255,.92);
+         border: var(--hairline) solid var(--line); display: inline-flex; align-items: center;
+         font-family: var(--data); font-size: 9px; letter-spacing: .16em; text-transform: uppercase;
+         color: #5F6269; }
+  .kept .plate svg { opacity: .45; }
+
+  /* Selection: ink ring + checkbox + word. Never colour alone. */
+  .pick { cursor: pointer; background: none; border: 0; text-align: left; padding: 0; width: 100%; font: inherit; color: inherit; }
+  .pick .plate { transition: box-shadow .15s; }
+  .pick[aria-pressed="true"] .plate { box-shadow: 0 0 0 2px var(--ink); border-color: var(--ink); }
+  .box { position: absolute; right: 8px; top: 8px; width: 22px; height: 22px; border-radius: 6px;
+         background: rgba(255,255,255,.92); border: 1.5px solid #74777E;
+         display: flex; align-items: center; justify-content: center; }
+  .pick[aria-pressed="true"] .box { background: var(--ink); border-color: var(--ink); }
+  .box svg { opacity: 0; }
+  .pick[aria-pressed="true"] .box svg { opacity: 1; }
+
+  .btn   { height: 52px; border-radius: 999px; border: 0; cursor: pointer; padding: 0 22px;
+           display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .btn-ink  { background: var(--ink); color: var(--chalk); }
+  .btn-line { background: var(--chalk); color: var(--ink); border: var(--hairline) solid var(--line); }
+  .btn[disabled] { opacity: .35; cursor: default; }
+  .btn-sm { height: 36px; padding: 0 13px; }
+  .cta-bar { position: absolute; left: 22px; right: 22px; bottom: 34px; display: flex; gap: 8px; }
+  .cta-bar .btn { flex: 1; }
+
+  /* Friend "monogram": four swatches from their own shelf, not an avatar colour. */
+  .mono4 { width: 44px; height: 44px; border-radius: 12px; overflow: hidden; flex: none;
+           display: grid; grid-template-columns: 1fr 1fr; border: var(--hairline) solid var(--line); }
+  .mono4 i { display: block; }
+  .mono4.pending { background: var(--chalk); display: flex; align-items: center; justify-content: center; }
+  .frow { display: flex; align-items: center; gap: 13px; min-height: 68px; padding: 12px 0;
+          border-top: var(--hairline) solid var(--line); }
+  .frow .grow { flex: 1; min-width: 0; }
+
+  /* Trade card */
+  .tcard { background: var(--chalk); border: var(--hairline) solid var(--line); border-radius: var(--r-card); padding: 13px; }
+  .swap  { display: grid; grid-template-columns: 1fr 28px 1fr; align-items: center; gap: 8px; }
+  .swap .plate { border-radius: 15px; }
+  .swaparrow { display: flex; justify-content: center; color: #5F6269; }
+  .stack { position: relative; }
+  .quote { font-family: var(--body); font-size: 15px; line-height: 21px; padding: 8px 13px;
+           border-radius: 12px; background: var(--putty); display: inline-block; }
+  .preset { display: flex; flex-wrap: wrap; gap: 8px; }
+  .preset .chip[aria-pressed="true"] { background: var(--ink); color: var(--chalk); border-color: var(--ink); }
+
+  /* Handover checklist — reuses the Measuring checklist's box states (UX-SPEC §4.5). */
+  .check { display: flex; align-items: center; gap: 13px; min-height: 44px; }
+  .check + .check { border-top: var(--hairline) solid var(--line); }
+  .cbox { width: 13px; height: 13px; border: 1px solid #74777E; border-radius: 2px; flex: none; }
+  .cbox.done { background: var(--ink); border-color: var(--ink); }
+
+  /* ---- iPad split view ---- */
+  .side { width: 320px; flex: none; border-right: var(--hairline) solid var(--line);
+          background: var(--putty); display: flex; flex-direction: column; padding: 24px 13px 20px; }
+  .side .D2 { padding: 8px 9px 0; }
+  .side .grp { padding: 22px 9px 6px; }
+  .srow { display: flex; align-items: center; gap: 11px; width: 100%; min-height: 48px;
+          padding: 6px 9px; border-radius: 12px; border: 0; background: none; cursor: pointer;
+          text-align: left; color: var(--ink); font: inherit; }
+  .srow[aria-current="true"] { background: var(--chalk); box-shadow: inset 0 0 0 1px var(--line); }
+  .srow .grow { flex: 1; min-width: 0; }
+  .srow .mono4 { width: 32px; height: 32px; border-radius: 9px; }
+  .sicon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; flex: none; }
+  .main { flex: 1; min-width: 0; position: relative; display: flex; flex-direction: column; }
+  .main .inner { padding: 24px 34px 0; }
+  .igrid { display: grid; grid-template-columns: repeat(5, 1fr); column-gap: 13px; row-gap: 22px; padding-top: 13px; }
+  .reqbtn { margin-top: 8px; width: 100%; }
+
+  /* iPad form sheet: centred, 26pt corners, one of the two sanctioned shadows. */
+  .scrim { position: absolute; inset: 0; background: rgba(20,21,26,.28); display: none;
+           align-items: center; justify-content: center; z-index: 5; }
+  .scrim.open { display: flex; }
+  .fsheet { width: 580px; height: 700px; background: var(--putty); border-radius: 26px;
+            display: flex; flex-direction: column; overflow: hidden; }
+  .fsheet .hd { display: flex; align-items: center; justify-content: space-between;
+                padding: 13px 22px; border-bottom: var(--hairline) solid var(--line); background: var(--chalk); }
+  .fsheet .bd { flex: 1; overflow: auto; padding: 0 22px 22px; }
+  .fsheet .ft { padding: 13px 22px 22px; border-top: var(--hairline) solid var(--line); background: var(--chalk); }
+  .pgrid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 13px; }
+  .sent { position: absolute; left: 50%; bottom: 34px; transform: translateX(-50%); z-index: 6;
+          background: var(--ink); color: var(--chalk); border-radius: 999px; height: 44px;
+          padding: 0 22px; display: none; align-items: center; }
+  .sent.show { display: inline-flex; }
+
+  /* Trades detail on iPad: two columns */
+  .tcols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; padding-top: 13px; }
+  .bigswap .plate { border-radius: 19px; }
+</style>
+
+<div class="page">
+  <header class="page-head">
+    <div class="M1 dim" style="margin-bottom:13px">Squish Index &middot; Proposal &middot; Milestone 6</div>
+    <h1>Friends and trading, on iPhone and iPad</h1>
+    <p>Visual target for <b>Design/FRIENDS-AND-TRADING.md</b>. Friend each other, browse each
+       other's shelves, request a trade, then mark the hand-over. Same palette, type and
+       components as the catalogue — every colour here still comes from a squishy.</p>
+  </header>
+
+  <!-- ===================================================== iPhone -->
+  <div class="section-h">iPhone</div>
+  <p class="section-p">Friends sits behind a button in the Grid header, so Grid · Shelf · Stats
+     stays a three-way control. The badge counts requests waiting for you.</p>
+
+  <div class="rack">
+
+    <!-- F0 — Grid header with Friends button -->
+    <div class="slot">
+      <div class="cap"><b>F0</b><span>Grid · entry point</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="topbar">
+              <div class="D2">Squish Index</div>
+              <button class="iconbtn" aria-label="Friends, 1 request">
+                <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="7.5" cy="7" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="14" cy="8" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 16.5c.6-3 2.8-4.5 5.5-4.5s4.9 1.5 5.5 4.5M13 12.2c2.3 0 4 1.3 4.6 3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <b class="chip-badge">1</b>
+              </button>
+            </div>
+            <div class="M2" style="margin-top:2px"><span class="ink">06</span><span class="M1 dim"> Specimens &nbsp;&middot;&nbsp; Avg squish </span><span class="ink">6.2</span></div>
+          </div>
+          <div class="mx" style="padding-top:22px;padding-bottom:13px">
+            <div class="seg" role="tablist">
+              <button role="tab" aria-selected="true">Grid</button>
+              <button role="tab" aria-selected="false">Shelf</button>
+              <button role="tab" aria-selected="false">Stats</button>
+            </div>
+          </div>
+          <div class="mx scroll"><div class="grid" data-grid="mine" data-limit="4"></div></div>
+        </div>
+      </div>
+      <p class="note">One new icon button, with a count badge. The badge carries the state, so
+         colour isn't doing the work.</p>
+    </div>
+
+    <!-- F1 — Friends list -->
+    <div class="slot">
+      <div class="cap"><b>F1</b><span>Friends</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="topbar">
+              <button class="textbtn">&lsaquo; Index</button>
+              <span class="M1 dim">Friends</span>
+              <span style="width:44px"></span>
+            </div>
+            <div class="D2" style="margin-top:8px">Friends</div>
+          </div>
+          <div class="mx scroll">
+            <div class="sechead"><span class="M1 ink">Waiting for you</span><span class="M1 dim">1</span></div>
+            <div data-request-mini></div>
+            <div class="sechead" style="padding-top:34px"><span class="M1 ink">Friends</span><span class="M1 dim">3</span></div>
+            <div data-friend-rows></div>
+          </div>
+        </div>
+        <div class="cta-bar"><button class="btn btn-ink shadow-cta">
+          <svg width="15" height="15" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 1v13M1 7.5h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span class="B2">Add a friend</span></button></div>
+      </div>
+      <p class="note">Friends are shown as four colours from their own shelf, not avatars or
+         photos of faces. A pending invite is shown until the friend accepts.</p>
+    </div>
+
+    <!-- F2 — Friend's shelf -->
+    <div class="slot">
+      <div class="cap"><b>F2</b><span>Friend's shelf · read-only</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="topbar">
+              <button class="textbtn">&lsaquo; Friends</button>
+              <button class="textbtn">Remove</button>
+            </div>
+            <div class="D2" style="margin-top:8px">Zoe's shelf</div>
+            <div class="M2"><span class="ink">08</span><span class="M1 dim"> Specimens &nbsp;&middot;&nbsp; </span><span class="ink">05</span><span class="M1 dim"> open to trade &nbsp;&middot;&nbsp; 2 h ago</span></div>
+          </div>
+          <div class="mx" style="padding-top:22px;padding-bottom:13px">
+            <div class="seg" role="tablist">
+              <button role="tab" aria-selected="true">Grid</button>
+              <button role="tab" aria-selected="false">Shelf</button>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:13px">
+              <span class="chip">Open to trade <b class="chip-badge">5</b></span>
+              <span class="chip">Newest <svg width="9" height="6" viewBox="0 0 9 6" aria-hidden="true"><path d="M1 1l3.5 3.5L8 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg></span>
+            </div>
+          </div>
+          <div class="mx scroll"><div class="grid" data-grid="zoe" data-limit="4" data-request></div></div>
+        </div>
+      </div>
+      <p class="note">This is the ordinary Grid, read-only. Kept squishies are faded and
+         labelled <b>Keeping</b>, and have no request button. There's no Stats tab for a
+         friend's shelf, so it can't be compared against yours.</p>
+    </div>
+
+    <!-- F3 — Request trade picker -->
+    <div class="slot">
+      <div class="cap"><b>F3</b><span>Request trade · live</span></div>
+      <div class="device">
+        <div class="screen" id="picker">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="topbar">
+              <button class="textbtn">Cancel</button>
+              <span class="M1 dim">Request trade</span>
+              <span style="width:44px"></span>
+            </div>
+          </div>
+          <div class="mx scroll">
+            <div class="M1 dim" style="margin-top:13px">You'd get &middot; from Zoe</div>
+            <div data-want style="margin-top:8px"></div>
+            <div class="sechead" style="padding-top:22px"><span class="M1 ink">You'd give</span><span class="M1 dim" data-count>Pick 1 or more</span></div>
+            <div class="grid" data-grid="mine" data-pick style="grid-template-columns:1fr 1fr 1fr;row-gap:13px"></div>
+            <div class="M1 dim" style="margin-top:22px;margin-bottom:8px">Add a line &middot; optional</div>
+            <div class="preset" data-preset></div>
+          </div>
+        </div>
+        <div class="cta-bar"><button class="btn btn-ink" data-send disabled><span class="B2">Send request</span></button></div>
+      </div>
+      <p class="note">Tap to choose what to offer. There's no text box: the optional line comes
+         from a short fixed list, so there's nothing to moderate.</p>
+    </div>
+
+    <!-- F4 — Incoming request -->
+    <div class="slot">
+      <div class="cap"><b>F4</b><span>Incoming request</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="topbar">
+              <button class="textbtn">&lsaquo; Friends</button>
+              <span class="M1 dim">Expires in 13 days</span>
+            </div>
+            <div class="D2" style="margin-top:8px">Maya wants to trade</div>
+            <div class="M1 dim" style="margin-top:4px">Sent 27 Sep &middot; 1 for 1</div>
+          </div>
+          <div class="mx scroll" style="padding-top:22px" data-incoming></div>
+        </div>
+        <div class="cta-bar">
+          <button class="btn btn-line"><span class="B2">No thanks</span></button>
+          <button class="btn btn-ink"><span class="B2">Accept</span></button>
+        </div>
+      </div>
+      <p class="note">The two squishies are shown side by side, with measurements, so the
+         comparison is about the objects. Nothing shows a value or "fair trade" score.</p>
+    </div>
+
+    <!-- F5 — Hand-over -->
+    <div class="slot">
+      <div class="cap"><b>F5</b><span>Trades · hand-over</span></div>
+      <div class="device">
+        <div class="screen">
+          <div class="safe-t"></div>
+          <div class="mx">
+            <div class="topbar">
+              <button class="textbtn">&lsaquo; Friends</button>
+              <span class="M1 dim">Trades</span>
+              <span style="width:44px"></span>
+            </div>
+            <div class="D2" style="margin-top:8px">Trades</div>
+          </div>
+          <div class="mx scroll" data-trades="phone"></div>
+        </div>
+        <div class="cta-bar"><button class="btn btn-ink"><span class="B2">I've handed mine over</span></button></div>
+      </div>
+      <p class="note">Toys still change hands in person or by post. The checklist uses the same
+         box states as the Measuring screen. When both boxes are ticked, each squishy is filed in
+         its new owner's catalogue.</p>
+    </div>
+
+  </div>
+
+  <!-- ===================================================== iPad -->
+  <div class="section-h">iPad</div>
+  <p class="section-p">On iPad the library and friends share a sidebar, with a friend's shelf
+     open beside it. The grid goes to five columns, and trade requests open as a centred form
+     sheet instead of a full screen. <b>Try it:</b> pick a friend in the sidebar, tap
+     <b>Request</b>, choose what to offer, and send.</p>
+
+  <div class="islot">
+    <div class="cap"><b>P1</b><span>Split view · friend's shelf · live</span></div>
+    <div class="ifit"><div class="ipad" id="ipad1">
+      <aside class="side" data-side="friends"></aside>
+      <section class="main">
+        <div class="inner">
+          <div class="D2" data-shelf-title>Zoe's shelf</div>
+          <div class="M2" data-shelf-stat></div>
+          <div style="display:flex;gap:13px;align-items:center;margin-top:22px">
+            <div class="seg" role="tablist" style="width:220px">
+              <button role="tab" aria-selected="true">Grid</button>
+              <button role="tab" aria-selected="false">Shelf</button>
+            </div>
+            <span class="chip">Open to trade <b class="chip-badge" data-open-count>5</b></span>
+            <span style="flex:1"></span>
+            <button class="textbtn">Remove friend</button>
+          </div>
+          <div class="igrid" data-igrid></div>
+        </div>
+        <div class="scrim" data-scrim>
+          <div class="fsheet" role="dialog" aria-label="Request trade">
+            <div class="hd">
+              <button class="textbtn" data-close>Cancel</button>
+              <span class="M1 ink">Request trade</span>
+              <span style="width:60px"></span>
+            </div>
+            <div class="bd">
+              <div class="M1 dim" style="margin-top:22px" data-want-label>You'd get</div>
+              <div data-iwant style="margin-top:8px"></div>
+              <div class="sechead" style="padding-top:22px"><span class="M1 ink">You'd give</span><span class="M1 dim" data-icount>Pick 1 or more</span></div>
+              <div class="pgrid4" data-ipick></div>
+              <div class="M1 dim" style="margin-top:22px;margin-bottom:8px">Add a line &middot; optional</div>
+              <div class="preset" data-ipreset></div>
+            </div>
+            <div class="ft"><button class="btn btn-ink" style="width:100%" data-isend disabled><span class="B2">Send request</span></button></div>
+          </div>
+        </div>
+        <div class="sent M1" data-sent>Request sent</div>
+      </section>
+    </div></div>
+  </div>
+
+  <div class="islot">
+    <div class="cap"><b>P2</b><span>Split view · trades</span></div>
+    <div class="ifit"><div class="ipad" id="ipad2">
+      <aside class="side" data-side="trades"></aside>
+      <section class="main">
+        <div class="inner">
+          <div class="D2">Trades</div>
+          <div class="M2"><span class="ink">01</span><span class="M1 dim"> waiting for you &nbsp;&middot;&nbsp; </span><span class="ink">01</span><span class="M1 dim"> in progress</span></div>
+          <div class="tcols">
+            <div>
+              <div class="sechead"><span class="M1 ink">Waiting for you</span><span class="M1 dim">Expires in 13 days</span></div>
+              <div class="tcard bigswap" data-incoming-ipad></div>
+            </div>
+            <div data-trades="ipad"></div>
+          </div>
+        </div>
+      </section>
+    </div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- data (stand-in photography) ---------- */
+  var MINE = [
+    { id: "m1", name: "Ember Blob",  squish: 6, w: 62, pal: ["#E8654A","#F2A07B","#B03A28","#FBD9C8"] },
+    { id: "m2", name: "Storm Loaf",  squish: 4, w: 88, pal: ["#8FA3B8","#5C7189","#C7D3DE","#3A4A5C"] },
+    { id: "m3", name: "Mint Bun",    squish: 9, w: 54, pal: ["#B8E0C8","#7FC49B","#4E9A72","#E3F2E9"] },
+    { id: "m4", name: "Cloud Pig",   squish: 8, w: 71, pal: ["#F4C2CE","#E894A8","#C25E77","#FAE4EA"] },
+    { id: "m5", name: "Slate Duck",  squish: 3, w: 66, pal: ["#E8C86A","#C7A23F","#F4E3B0","#6E6A5C"] },
+    { id: "m6", name: "Peach Cat",   squish: 7, w: 59, pal: ["#F2B49A","#E88C6A","#C9573C","#F7E3D6"] }
+  ];
+  var FRIENDS = {
+    zoe: { name: "Zoe", ago: "2 h ago", items: [
+      { id: "z1", name: "Mochi Cat",   squish: 8, w: 64, pal: ["#EDE3D1","#C9B48E","#8C7550","#F7F2E8"] },
+      { id: "z2", name: "Berry Toast", squish: 5, w: 80, pal: ["#C2466B","#E57C9A","#7E2440","#F4C7D3"], keep: true },
+      { id: "z3", name: "Lemon Seal",  squish: 7, w: 92, pal: ["#F0D64F","#D8B726","#F8EBA6","#8A7A1E"] },
+      { id: "z4", name: "Sky Bao",     squish: 9, w: 50, pal: ["#9CC7E8","#6AA3CF","#D4E8F6","#35698F"] },
+      { id: "z5", name: "Plum Frog",   squish: 4, w: 73, pal: ["#7B5EA7","#A48BC9","#4B3470","#D9CDEB"] },
+      { id: "z6", name: "Tofu Bear",   squish: 6, w: 68, pal: ["#F5F1E6","#DDD3BC","#B3A583","#FFFFFF"], keep: true },
+      { id: "z7", name: "Kiwi Puff",   squish: 10, w: 45, pal: ["#8DBF4E","#6A9A30","#C6E29C","#3F5E1B"] },
+      { id: "z8", name: "Coral Toad",  squish: 5, w: 77, pal: ["#F08A6E","#D9644A","#F9C4B3","#8A3521"], keep: true }
+    ]},
+    maya: { name: "Maya", ago: "Yesterday", items: [
+      { id: "y1", name: "Sky Bao",      squish: 9, w: 52, pal: ["#A7CBE6","#76A8D0","#D8EAF7","#3B6E93"] },
+      { id: "y2", name: "Honey Loaf",   squish: 6, w: 94, pal: ["#E7B04F","#C98C2A","#F5D9A1","#7A5316"] },
+      { id: "y3", name: "Grape Mochi",  squish: 8, w: 48, pal: ["#8E5FB5","#B894D6","#5B3780","#E4D6F0"], keep: true },
+      { id: "y4", name: "Matcha Roll",  squish: 7, w: 83, pal: ["#9BB86A","#7A9A48","#CFE0B3","#4A6128"] },
+      { id: "y5", name: "Blush Bunny",  squish: 5, w: 70, pal: ["#F2C6C2","#E09E98","#FBE6E3","#A8615B"] }
+    ]},
+    ren: { name: "Ren", ago: "4 days ago", items: [
+      { id: "r1", name: "Night Slug",  squish: 3, w: 99, pal: ["#3B3F63","#5A6090","#9FA4CC","#1D1F33"] },
+      { id: "r2", name: "Butter Pup",  squish: 7, w: 61, pal: ["#F3DD9B","#E3C46A","#FBF0CF","#9C8237"] },
+      { id: "r3", name: "Rust Bean",   squish: 4, w: 57, pal: ["#B4552E","#D67E55","#EFC3AA","#6E2F17"], keep: true }
+    ]}
+  };
+  var PRESETS = ["I have a double!", "Swap at school?", "I can post it"];
+
+  var BLOBS = [
+    "M50 9c19 0 34 12 34 29 0 9-4 15-4 22 0 10-12 20-30 20S20 70 20 60c0-7-4-13-4-22C16 21 31 9 50 9z",
+    "M50 12c22 0 33 14 33 30S69 80 50 80 17 58 17 42 28 12 50 12z",
+    "M50 10c20 0 32 15 32 32 0 14-14 28-32 28S18 56 18 42c0-17 12-32 32-32z",
+    "M22 30c0-10 8-16 28-16s28 6 28 16v30c0 12-10 18-28 18S22 72 22 60z"
+  ];
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+  function photo(s) {
+    var b = BLOBS[hash(s.id) % BLOBS.length];
+    return '<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">' +
+      '<path d="' + b + '" fill="' + s.pal[0] + '"/>' +
+      '<path d="M36 36c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/>' +
+      '<path d="M64 36c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/></svg>';
+  }
+  function palHTML(s) { return '<span class="pal">' + s.pal.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + '</span>'; }
+  function mono4(f) {
+    var cs = f.items.slice(0, 4).map(function (s) { return s.pal[0]; });
+    return '<span class="mono4" aria-hidden="true">' + cs.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + '</span>';
+  }
+  var CHECK = '<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2l2.4 2.4 4.6-5" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var SWAP = '<svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M4 8h13l-3.5-3.5M18 14H5l3.5 3.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var CHEV = '<svg width="7" height="12" viewBox="0 0 7 12" aria-hidden="true"><path d="M1 1l5 5-5 5" stroke="#74777E" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>';
+
+  function card(s, opts) {
+    opts = opts || {};
+    var kept = s.keep && opts.friend;
+    var inner =
+      '<div class="plate">' + photo(s) + (kept ? '<span class="tag">Keeping</span>' : '') +
+        (opts.pick ? '<span class="box">' + CHECK + '</span>' : '') + '</div>' +
+      '<div class="cardname ' + (opts.small ? 'B3 body-600' : 'D4') + '">' + s.name + '</div>' +
+      (opts.small ? '<div class="M2 ink" style="margin-top:2px">' + pad(s.squish) + '</div>' :
+        '<div class="meta">' + palHTML(s) + '<span class="M2 ink">' + pad(s.squish) + '</span></div>') +
+      (opts.request && !kept ? '<button class="btn btn-line btn-sm reqbtn M1" data-req="' + s.id + '">Request</button>' : '');
+    if (opts.pick) return '<button class="pick" aria-pressed="false" data-id="' + s.id + '" aria-label="Offer ' + s.name + '">' + inner + '</button>';
+    return '<div class="' + (kept ? 'kept' : '') + '">' + inner + '</div>';
+  }
+  function row(s, label) {
+    return '<div style="display:flex;gap:13px;align-items:center">' +
+      '<div class="plate" style="width:88px;flex:none;border-radius:15px">' + photo(s) + '</div>' +
+      '<div style="min-width:0"><div class="D4">' + s.name + '</div>' +
+      '<div class="M1 dim" style="margin-top:4px">Squish <span class="ink M2">' + pad(s.squish) + '</span> &middot; ' + s.w + ' mm</div>' +
+      '<div style="margin-top:6px">' + palHTML(s) + '</div>' + (label ? '<div class="M1 dim" style="margin-top:6px">' + label + '</div>' : '') +
+      '</div></div>';
+  }
+  function byId(id) {
+    var all = MINE.slice();
+    Object.keys(FRIENDS).forEach(function (k) { all = all.concat(FRIENDS[k].items); });
+    return all.filter(function (s) { return s.id === id; })[0];
+  }
+
+  /* ---------- static iPhone fills ---------- */
+  document.querySelectorAll("[data-grid]").forEach(function (g) {
+    var src = g.getAttribute("data-grid") === "mine" ? MINE : FRIENDS[g.getAttribute("data-grid")].items;
+    var lim = +g.getAttribute("data-limit") || src.length;
+    var pick = g.hasAttribute("data-pick");
+    g.innerHTML = src.slice(0, lim).map(function (s) {
+      return card(s, { friend: src !== MINE, request: g.hasAttribute("data-request"), pick: pick, small: pick });
+    }).join("");
+  });
+
+  var maya = FRIENDS.maya, zoe = FRIENDS.zoe;
+  var INC = { give: maya.items[0], get: MINE[0] };   // Maya offers Sky Bao for your Ember Blob
+
+  document.querySelectorAll("[data-request-mini]").forEach(function (el) {
+    el.innerHTML = '<div class="tcard" style="display:flex;align-items:center;gap:13px">' +
+      '<div class="plate" style="width:52px;border-radius:12px;flex:none">' + photo(INC.give) + '</div>' +
+      '<span class="dim">' + SWAP + '</span>' +
+      '<div class="plate" style="width:52px;border-radius:12px;flex:none">' + photo(INC.get) + '</div>' +
+      '<div style="flex:1;min-width:0"><div class="D4">Maya</div><div class="M1 dim" style="margin-top:3px">Wants your Ember Blob</div></div>' + CHEV + '</div>';
+  });
+
+  function friendRowsHTML() {
+    return ["zoe", "maya", "ren"].map(function (k) {
+      var f = FRIENDS[k];
+      return '<div class="frow">' + mono4(f) + '<div class="grow"><div class="D4">' + f.name + '</div>' +
+        '<div class="M1 dim" style="margin-top:3px">' + pad(f.items.length) + ' specimens &middot; ' + f.ago + '</div></div>' + CHEV + '</div>';
+    }).join("") +
+    '<div class="frow"><span class="mono4 pending"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="#74777E" stroke-width="1.4"/><path d="M8 4.8V8l2.2 1.4" stroke="#74777E" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg></span>' +
+    '<div class="grow"><div class="D4 dim">Priya</div><div class="M1 dim" style="margin-top:3px">Invite sent &middot; waiting</div></div>' +
+    '<button class="textbtn">Cancel</button></div>';
+  }
+  document.querySelectorAll("[data-friend-rows]").forEach(function (el) { el.innerHTML = friendRowsHTML(); });
+
+  document.querySelectorAll("[data-want]").forEach(function (el) { el.innerHTML = row(zoe.items[0]); });
+
+  function swapHTML(big) {
+    return '<div class="swap">' +
+      '<div><div class="M1 dim" style="margin-bottom:8px">Maya gives</div><div class="plate">' + photo(INC.give) + '</div>' +
+        '<div class="' + (big ? 'D3' : 'D4') + ' cardname">' + INC.give.name + '</div>' +
+        '<div class="M1 dim" style="margin-top:4px">Squish <span class="M2 ink">' + pad(INC.give.squish) + '</span> &middot; ' + INC.give.w + ' mm</div></div>' +
+      '<div class="swaparrow">' + SWAP + '</div>' +
+      '<div><div class="M1 dim" style="margin-bottom:8px">You give</div><div class="plate">' + photo(INC.get) + '</div>' +
+        '<div class="' + (big ? 'D3' : 'D4') + ' cardname">' + INC.get.name + '</div>' +
+        '<div class="M1 dim" style="margin-top:4px">Squish <span class="M2 ink">' + pad(INC.get.squish) + '</span> &middot; ' + INC.get.w + ' mm</div></div>' +
+    '</div>' +
+    '<div style="margin-top:22px"><span class="quote">&ldquo;Swap at school?&rdquo;</span></div>' +
+    '<p class="B3 dim" style="margin-top:13px">After you both accept, swap the squishies in person or by post, then tick the hand-over.</p>';
+  }
+  document.querySelectorAll("[data-incoming]").forEach(function (el) { el.innerHTML = swapHTML(false); });
+  document.querySelectorAll("[data-incoming-ipad]").forEach(function (el) {
+    el.innerHTML = '<div class="D4" style="margin-bottom:13px">Maya wants to trade</div>' + swapHTML(true) +
+      '<div style="display:flex;gap:8px;margin-top:22px"><button class="btn btn-line" style="flex:1"><span class="B2">No thanks</span></button>' +
+      '<button class="btn btn-ink" style="flex:1"><span class="B2">Accept</span></button></div>';
+  });
+
+  function tradesHTML() {
+    var you = MINE[3], them = FRIENDS.ren.items[1];
+    return '<div class="sechead"><span class="M1 ink">In progress</span><span class="M1 dim">With Ren</span></div>' +
+      '<div class="tcard">' +
+        '<div class="swap"><div><div class="plate">' + photo(them) + '</div><div class="D4 cardname">' + them.name + '</div></div>' +
+        '<div class="swaparrow">' + SWAP + '</div>' +
+        '<div><div class="plate">' + photo(you) + '</div><div class="D4 cardname">' + you.name + '</div></div></div>' +
+        '<div style="margin-top:13px">' +
+          '<div class="check"><span class="cbox done"></span><span class="B1">Ren handed over <b class="body-600">' + them.name + '</b></span></div>' +
+          '<div class="check"><span class="cbox"></span><span class="B1">You hand over <b class="body-600">' + you.name + '</b></span></div>' +
+        '</div></div>' +
+      '<div class="sechead" style="padding-top:34px"><span class="M1 ink">Done</span><span class="M1 dim">1</span></div>' +
+      '<div class="frow" style="border-top:0">' + row(FRIENDS.zoe.items[3], "From Zoe &middot; 21 Sep 2026") + '</div>';
+  }
+  document.querySelectorAll('[data-trades]').forEach(function (el) { el.innerHTML = tradesHTML(); });
+
+  /* ---------- picker behaviour (shared by F3 and the iPad sheet) ---------- */
+  function wirePicker(root, gridSel, countSel, sendSel, presetSel) {
+    var grid = root.querySelector(gridSel), count = root.querySelector(countSel),
+        send = root.querySelector(sendSel), pre = root.querySelector(presetSel);
+    pre.innerHTML = PRESETS.map(function (p) { return '<button class="chip" aria-pressed="false">' + p + '</button>'; }).join("");
+    pre.addEventListener("click", function (e) {
+      var b = e.target.closest(".chip"); if (!b) return;
+      var on = b.getAttribute("aria-pressed") !== "true";
+      pre.querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    function update() {
+      var n = grid.querySelectorAll('.pick[aria-pressed="true"]').length;
+      count.textContent = n ? n + " for 1" : "Pick 1 or more";
+      send.disabled = !n;
+      send.querySelector("span").textContent = n ? "Send request · " + n + " for 1" : "Send request";
+    }
+    grid.addEventListener("click", function (e) {
+      var b = e.target.closest(".pick"); if (!b) return;
+      b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true");
+      update();
+    });
+    return { reset: function () {
+      grid.querySelectorAll(".pick").forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+      pre.querySelectorAll(".chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); });
+      update();
+    }, update: update };
+  }
+  var phone = document.getElementById("picker").parentNode;
+  var fp = wirePicker(phone, "[data-pick]", "[data-count]", "[data-send]", "[data-preset]");
+  phone.querySelector('.pick').setAttribute("aria-pressed", "true"); fp.update();
+
+  /* ---------- iPad sidebar ---------- */
+  var ICON_GRID = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="2" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="2" y="10" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="10" y="10" width="6" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>';
+  var ICON_SHELF = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 15h14M4 15V9M8 15V5M12 15v-4M15 15V8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>';
+  var ICON_STATS = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 15V9M7 15V4M11 15v-7M15 15v-3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  var ICON_IN = '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 7h10l-3-3M15 11H5l3 3" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_ADD = '<svg width="14" height="14" viewBox="0 0 15 15" aria-hidden="true"><path d="M7.5 1v13M1 7.5h13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>';
+
+  function sideHTML(current) {
+    function lib(icon, label, n) { return '<button class="srow"><span class="sicon">' + icon + '</span><span class="grow B1">' + label + '</span>' + (n ? '<span class="M2 dim">' + n + '</span>' : '') + '</button>'; }
+    var h = '<div class="D2">Squish Index</div>' +
+      '<div class="grp M1 dim">Library</div>' + lib(ICON_GRID, "Grid", "06") + lib(ICON_SHELF, "Shelf") + lib(ICON_STATS, "Stats") +
+      '<div class="grp M1 dim">Friends</div>';
+    ["zoe", "maya", "ren"].forEach(function (k) {
+      var f = FRIENDS[k];
+      h += '<button class="srow" data-friend="' + k + '" aria-current="' + (current === k) + '">' + mono4(f) +
+        '<span class="grow"><span class="B1 body-500" style="display:block">' + f.name + '</span><span class="M1 dim">' + f.ago + '</span></span>' +
+        '<span class="M2 dim">' + pad(f.items.length) + '</span></button>';
+    });
+    h += '<button class="srow"><span class="sicon dim" style="color:#5F6269">' + ICON_ADD + '</span><span class="grow M1 dim">Add a friend</span></button>' +
+      '<div class="grp M1 dim">Trades</div>' +
+      '<button class="srow" aria-current="' + (current === "trades") + '"><span class="sicon">' + ICON_IN + '</span><span class="grow B1">Trades</span><b class="chip-badge">1</b></button>' +
+      '<div style="flex:1"></div><div class="M1 dim" style="padding:0 9px">Shared through iCloud</div>';
+    return h;
+  }
+  document.querySelector('[data-side="trades"]').innerHTML = sideHTML("trades");
+
+  var ipad = document.getElementById("ipad1");
+  var side = ipad.querySelector('[data-side="friends"]');
+  var cur = "zoe", want = null;
+
+  function showFriend(k) {
+    cur = k; var f = FRIENDS[k];
+    side.innerHTML = sideHTML(k);
+    var open = f.items.filter(function (s) { return !s.keep; }).length;
+    ipad.querySelector("[data-shelf-title]").textContent = f.name + "'s shelf";
+    ipad.querySelector("[data-shelf-stat]").innerHTML = '<span class="ink">' + pad(f.items.length) + '</span><span class="M1 dim"> Specimens &nbsp;&middot;&nbsp; </span><span class="ink">' + pad(open) + '</span><span class="M1 dim"> open to trade &nbsp;&middot;&nbsp; updated ' + f.ago + '</span>';
+    ipad.querySelector("[data-open-count]").textContent = open;
+    ipad.querySelector("[data-igrid]").innerHTML = f.items.map(function (s) { return card(s, { friend: true, request: true }); }).join("");
+  }
+  side.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-friend]"); if (b) showFriend(b.getAttribute("data-friend"));
+  });
+
+  var scrim = ipad.querySelector("[data-scrim]");
+  ipad.querySelector("[data-ipick]").innerHTML = MINE.map(function (s) { return card(s, { pick: true, small: true }); }).join("");
+  var ip = wirePicker(ipad, "[data-ipick]", "[data-icount]", "[data-isend]", "[data-ipreset]");
+
+  ipad.querySelector("[data-igrid]").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-req]"); if (!b) return;
+    want = byId(b.getAttribute("data-req"));
+    ipad.querySelector("[data-want-label]").textContent = "You'd get · from " + FRIENDS[cur].name;
+    ipad.querySelector("[data-iwant]").innerHTML = row(want);
+    ip.reset(); scrim.classList.add("open");
+    scrim.querySelector(".bd").scrollTop = 0;
+    ipad.querySelector("[data-close]").focus();
+  });
+  function close() { scrim.classList.remove("open"); }
+  ipad.querySelector("[data-close]").addEventListener("click", close);
+  scrim.addEventListener("click", function (e) { if (e.target === scrim) close(); });
+  ipad.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  ipad.querySelector("[data-isend]").addEventListener("click", function () {
+    close();
+    var t = ipad.querySelector("[data-sent]");
+    t.textContent = "Request sent to " + FRIENDS[cur].name + " · " + want.name;
+    t.classList.add("show");
+    setTimeout(function () { t.classList.remove("show"); }, 2200);
+  });
+  showFriend("zoe");
+
+  /* ---------- scale iPad frames to the page width ---------- */
+  function fit() {
+    document.querySelectorAll(".ifit").forEach(function (w) {
+      var d = w.firstElementChild, s = Math.min(1, w.clientWidth / 1182);
+      d.style.transform = "scale(" + s + ")";
+      w.style.height = (822 * s) + "px";
+    });
+    document.querySelectorAll(".slot > .device").forEach(function (d) {
+      var s = Math.min(1, d.parentNode.clientWidth / 395);
+      d.style.zoom = s < 1 ? s : "";
+    });
+  }
+  window.addEventListener("resize", fit); fit();
+})();
+</script>

@@ -162,12 +162,14 @@ by hand: about one file of code, with no dependencies.
   and 6b *trade requests*. 6a alone is useful and ships first.
 - Design: new surfaces are the *Friends* list, the *Request trade* picker, the request card and
   *Trades* list. They are built from existing components (`SpecimenCard`, `PhotoPlate`,
-  `MonoLabel`, Grid), with no new visual language. Mockups needed.
+  `MonoLabel`, Grid), with no new visual language. Mockups: `friends-trading.html`
+  (iPhone F0–F5, iPad split view P1–P2), built from `Design/mockups/friends-trading.body.html`.
 
 ## 9. Open questions
 
-1. **Where do Friends and Trades live?** A fourth segment beside Grid · Shelf · Stats, or a
-   header button on the Grid? Needs a mockup.
+1. **Where do Friends and Trades live?** Mocked in `friends-trading.html`: a header button
+   on the Grid on iPhone (Grid · Shelf · Stats stays three-way), and a sidebar on iPad.
+   Confirm.
 2. **Preset lines** in requests — allow a short fixed list, or items only?
 3. **"Open to trade" default** — should new squishies default to open or keeping?
 4. **Parent approval** — should accepting a friend or a trade need a parent's OK? It adds

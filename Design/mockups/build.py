@@ -7,6 +7,7 @@ inlined as base64 data URIs rather than linked.
 
     python3 Design/mockups/build.py                     # -> squish-index-mockups.html
     python3 Design/mockups/build.py durometer-options   # -> durometer-options.html
+    python3 Design/mockups/build.py friends-trading     # -> friends-trading.html
 
 Inputs   Design/mockups/{fonts/*.woff2, tokens.css, <name>.body.html}
 Output   <name>.html at the repo root (per SPEC.md kickoff)
@@ -23,6 +24,7 @@ ROOT = HERE.parent.parent
 PAGES = {
     "squish-index-mockups": ("body.html", "Squish Index"),
     "durometer-options": ("durometer-options.body.html", "Three Durometers"),
+    "friends-trading": ("friends-trading.body.html", "Friends and Trading"),
 }
 
 # (file, css family name, font-weight descriptor)
