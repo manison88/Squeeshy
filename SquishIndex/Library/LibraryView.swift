@@ -151,8 +151,8 @@ struct LibraryView: View {
                 friendsButton
             }
         }
-            .padding(.horizontal, SquishTheme.Space.margin)
-            .padding(.top, SquishTheme.Space.gutter)
+        .padding(.horizontal, SquishTheme.Space.margin)
+        .padding(.top, SquishTheme.Space.gutter)
     }
 
     /// One icon button, with a count badge for things waiting on this user —
