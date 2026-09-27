@@ -351,6 +351,22 @@ body {
           padding: 0 22px; display: none; align-items: center; }
   .sent.show { display: inline-flex; }
 
+  /* Sample gallery */
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 26px 13px; }
+  .gallery .plate { border-radius: 19px; }
+  .gallery .own { margin-top: 3px; }
+
+  /* Specimen sheet (screen 6 pattern) */
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 330px; background: var(--chalk);
+           border-radius: 26px 26px 0 0; padding: 8px 22px 0; }
+  .grab  { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto 13px; }
+  .srows .r { display: flex; align-items: center; min-height: 30px; }
+  .srows .r + .r { border-top: var(--hairline) solid var(--line); }
+  .srows .k { width: 88px; flex: none; }
+  .propbar { display: flex; height: 13px; border-radius: 3px; overflow: hidden; margin-top: 8px; }
+  .sduro { display: flex; align-items: flex-end; height: 56px; }
+  .sduro span { flex: 1; display: flex; justify-content: center; align-items: flex-end; }
+
   /* Trades detail on iPad: two columns */
   .tcols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; padding-top: 13px; }
   .bigswap .plate { border-radius: 19px; }
@@ -364,6 +380,13 @@ body {
        other's shelves, request a trade, then mark the hand-over. Same palette, type and
        components as the catalogue — every colour here still comes from a squishy.</p>
   </header>
+
+  <!-- ===================================================== Samples -->
+  <div class="section-h">The sample collection</div>
+  <p class="section-p">Twenty-two sample squishies across four shelves: yours, Zoe's, Maya's and
+     Ren's. Every screen below uses them. The palette strip under each one is pulled from the
+     toy itself, which is where all the colour in the app comes from.</p>
+  <div class="gallery" data-gallery></div>
 
   <!-- ===================================================== iPhone -->
   <div class="section-h">iPhone</div>
@@ -461,6 +484,21 @@ body {
       <p class="note">This is the ordinary Grid, read-only. Kept squishies are faded and
          labelled <b>Keeping</b>, and have no request button. There's no Stats tab for a
          friend's shelf, so it can't be compared against yours.</p>
+    </div>
+
+    <!-- F2b — Friend's specimen sheet -->
+    <div class="slot">
+      <div class="cap"><b>F2b</b><span>Friend's squishy · specimen sheet</span></div>
+      <div class="device">
+        <div style="position:absolute;left:0;right:0;top:0;height:360px" data-hero></div>
+        <div style="position:absolute;top:59px;left:22px;right:22px;display:flex;justify-content:space-between">
+          <button class="iconbtn" aria-label="Back to Zoe's shelf"><svg width="9" height="15" viewBox="0 0 9 15" aria-hidden="true"><path d="M7.5 1.5 1.5 7.5l6 6" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+        <div class="sheet shadow-sheet" data-sheet></div>
+        <div class="cta-bar"><button class="btn btn-ink shadow-cta"><span class="B2">Request trade</span></button></div>
+      </div>
+      <p class="note">Tapping a friend's squishy opens the normal specimen sheet, with its real
+         measurements and whose shelf it's on. <b>Request trade</b> is the only new button.</p>
     </div>
 
     <!-- F3 — Request trade picker -->
@@ -615,55 +653,227 @@ body {
 (function () {
   "use strict";
 
-  /* ---------- data (stand-in photography) ---------- */
+  /* ---------- sample squishies ----------
+     Each is drawn as a studio photograph: lightbox backdrop, soft contact
+     shadow, shaded foam body, specular gloss. The toys are cute because
+     real squishies are; the chrome around them stays plain (SPEC §7). */
+  function S(id, name, kind, squish, w, h, c, extra) {
+    var o = { id: id, name: name, kind: kind, squish: squish, w: w, h: h, c: c,
+              pal: [c.b, c.l, c.d, c.a || c.l] };
+    for (var k in (extra || {})) o[k] = extra[k];
+    return o;
+  }
   var MINE = [
-    { id: "m1", name: "Ember Blob",  squish: 6, w: 62, pal: ["#E8654A","#F2A07B","#B03A28","#FBD9C8"] },
-    { id: "m2", name: "Storm Loaf",  squish: 4, w: 88, pal: ["#8FA3B8","#5C7189","#C7D3DE","#3A4A5C"] },
-    { id: "m3", name: "Mint Bun",    squish: 9, w: 54, pal: ["#B8E0C8","#7FC49B","#4E9A72","#E3F2E9"] },
-    { id: "m4", name: "Cloud Pig",   squish: 8, w: 71, pal: ["#F4C2CE","#E894A8","#C25E77","#FAE4EA"] },
-    { id: "m5", name: "Slate Duck",  squish: 3, w: 66, pal: ["#E8C86A","#C7A23F","#F4E3B0","#6E6A5C"] },
-    { id: "m6", name: "Peach Cat",   squish: 7, w: 59, pal: ["#F2B49A","#E88C6A","#C9573C","#F7E3D6"] }
+    S("m1", "Strawberry Mochi", "strawberry", 6, 62, 58, { b: "#E8475A", l: "#FF8A92", d: "#A3202F", a: "#5DAA4A" }),
+    S("m2", "Panda Bun",        "panda",      8, 74, 66, { b: "#F4F2EE", l: "#FFFFFF", d: "#C9C4BA", a: "#26242A" }),
+    S("m3", "Butter Toast",     "toast",      4, 88, 92, { b: "#F2D39A", l: "#FBE9C4", d: "#B9793A", a: "#F6D44A" }),
+    S("m4", "Peach Bum",        "peach",      9, 66, 60, { b: "#FFB38F", l: "#FFD7C0", d: "#E0735E", a: "#6BAE52" }),
+    S("m5", "Sprinkle Donut",   "donut",      5, 80, 76, { b: "#E9B57A", l: "#F6D2A2", d: "#B67B41", a: "#F48FB5" }),
+    S("m6", "Bunny Loaf",       "bunny",      7, 58, 84, { b: "#F7E6DA", l: "#FFFFFF", d: "#D8B9A6", a: "#F4A6B4" })
   ];
   var FRIENDS = {
     zoe: { name: "Zoe", ago: "2 h ago", items: [
-      { id: "z1", name: "Mochi Cat",   squish: 8, w: 64, pal: ["#EDE3D1","#C9B48E","#8C7550","#F7F2E8"] },
-      { id: "z2", name: "Berry Toast", squish: 5, w: 80, pal: ["#C2466B","#E57C9A","#7E2440","#F4C7D3"], keep: true },
-      { id: "z3", name: "Lemon Seal",  squish: 7, w: 92, pal: ["#F0D64F","#D8B726","#F8EBA6","#8A7A1E"] },
-      { id: "z4", name: "Sky Bao",     squish: 9, w: 50, pal: ["#9CC7E8","#6AA3CF","#D4E8F6","#35698F"] },
-      { id: "z5", name: "Plum Frog",   squish: 4, w: 73, pal: ["#7B5EA7","#A48BC9","#4B3470","#D9CDEB"] },
-      { id: "z6", name: "Tofu Bear",   squish: 6, w: 68, pal: ["#F5F1E6","#DDD3BC","#B3A583","#FFFFFF"], keep: true },
-      { id: "z7", name: "Kiwi Puff",   squish: 10, w: 45, pal: ["#8DBF4E","#6A9A30","#C6E29C","#3F5E1B"] },
-      { id: "z8", name: "Coral Toad",  squish: 5, w: 77, pal: ["#F08A6E","#D9644A","#F9C4B3","#8A3521"], keep: true }
+      S("z1", "Mochi Cat",        "cat",      8, 64, 60, { b: "#F3E6CF", l: "#FFF8EC", d: "#C9AE84", a: "#F2A7A0" }),
+      S("z2", "Avocado Pal",      "avocado",  5, 70, 86, { b: "#4F7A2E", l: "#D9E88A", d: "#2F4C1A", a: "#8A5A36" }, { keep: true }),
+      S("z3", "Lemon Seal",       "seal",     7, 92, 50, { b: "#F5D949", l: "#FFF0A0", d: "#C9A616", a: "#2A2528" }),
+      S("z4", "Sky Whale",        "whale",    9, 96, 58, { b: "#7FB6E6", l: "#C5E2FA", d: "#3F79AE", a: "#EAF4FC" }),
+      S("z5", "Frog Bun",         "frog",     4, 84, 62, { b: "#7DC258", l: "#B9E596", d: "#3F7F29", a: "#FFFFFF" }),
+      S("z6", "Cream Cupcake",    "cupcake",  6, 64, 80, { b: "#FBE3EC", l: "#FFFFFF", d: "#E3A2BA", a: "#8FC7E8" }, { keep: true }),
+      S("z7", "Cloud Puff",       "cloud",   10, 90, 58, { b: "#EEF3FA", l: "#FFFFFF", d: "#B9C8DC", a: "#F7B6C4" }),
+      S("z8", "Caramel Pudding",  "pudding",  5, 68, 70, { b: "#F6D57A", l: "#FFEBB0", d: "#C99A2E", a: "#8A4B1C" }, { keep: true })
     ]},
     maya: { name: "Maya", ago: "Yesterday", items: [
-      { id: "y1", name: "Sky Bao",      squish: 9, w: 52, pal: ["#A7CBE6","#76A8D0","#D8EAF7","#3B6E93"] },
-      { id: "y2", name: "Honey Loaf",   squish: 6, w: 94, pal: ["#E7B04F","#C98C2A","#F5D9A1","#7A5316"] },
-      { id: "y3", name: "Grape Mochi",  squish: 8, w: 48, pal: ["#8E5FB5","#B894D6","#5B3780","#E4D6F0"], keep: true },
-      { id: "y4", name: "Matcha Roll",  squish: 7, w: 83, pal: ["#9BB86A","#7A9A48","#CFE0B3","#4A6128"] },
-      { id: "y5", name: "Blush Bunny",  squish: 5, w: 70, pal: ["#F2C6C2","#E09E98","#FBE6E3","#A8615B"] }
+      S("y1", "Blue Whale",       "whale",    9, 90, 54, { b: "#5E8FD6", l: "#A9C8F2", d: "#2F5A9E", a: "#E6EFFB" }),
+      S("y2", "Honey Toast",      "toast",    6, 94, 96, { b: "#EFC27A", l: "#F9DDA8", d: "#A6632A", a: "#E89A2B" }),
+      S("y3", "Grape Cat",        "cat",      8, 60, 58, { b: "#A98BD6", l: "#D4C4F0", d: "#6A4F9E", a: "#F2A7C0" }, { keep: true }),
+      S("y4", "Matcha Frog",      "frog",     7, 82, 60, { b: "#A6BF6A", l: "#D2E3A4", d: "#62783A", a: "#FFFFFF" }),
+      S("y5", "Blush Bunny",      "bunny",    5, 56, 82, { b: "#F6C9CF", l: "#FFE8EB", d: "#D9929C", a: "#F08A9C" })
     ]},
     ren: { name: "Ren", ago: "4 days ago", items: [
-      { id: "r1", name: "Night Slug",  squish: 3, w: 99, pal: ["#3B3F63","#5A6090","#9FA4CC","#1D1F33"] },
-      { id: "r2", name: "Butter Pup",  squish: 7, w: 61, pal: ["#F3DD9B","#E3C46A","#FBF0CF","#9C8237"] },
-      { id: "r3", name: "Rust Bean",   squish: 4, w: 57, pal: ["#B4552E","#D67E55","#EFC3AA","#6E2F17"], keep: true }
+      S("r1", "Choco Donut",      "donut",    3, 78, 74, { b: "#D9A56B", l: "#F0C997", d: "#9C6A36", a: "#6B3F24" }),
+      S("r2", "Custard Bao",      "bun",      7, 72, 58, { b: "#FBF3E4", l: "#FFFFFF", d: "#D8C7A6", a: "#F2B6A0" }),
+      S("r3", "Mango Seal",       "seal",     4, 94, 52, { b: "#FFB547", l: "#FFD892", d: "#D97E12", a: "#2A2528" }, { keep: true })
     ]}
   };
   var PRESETS = ["I have a double!", "Swap at school?", "I can post it"];
-
-  var BLOBS = [
-    "M50 9c19 0 34 12 34 29 0 9-4 15-4 22 0 10-12 20-30 20S20 70 20 60c0-7-4-13-4-22C16 21 31 9 50 9z",
-    "M50 12c22 0 33 14 33 30S69 80 50 80 17 58 17 42 28 12 50 12z",
-    "M50 10c20 0 32 15 32 32 0 14-14 28-32 28S18 56 18 42c0-17 12-32 32-32z",
-    "M22 30c0-10 8-16 28-16s28 6 28 16v30c0 12-10 18-28 18S22 72 22 60z"
-  ];
   function pad(n) { return n < 10 ? "0" + n : String(n); }
-  function hash(s) { var h = 0; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return Math.abs(h); }
+
+  var UID = 0;
+  var EYE = "#2A2226";
+  function rg(id, c) {
+    return '<radialGradient id="' + id + '" cx="36%" cy="30%" r="78%">' +
+      '<stop offset="0" stop-color="' + c.l + '"/><stop offset=".55" stop-color="' + c.b + '"/>' +
+      '<stop offset="1" stop-color="' + c.d + '"/></radialGradient>';
+  }
+  function face(u, x, y, k, opts) {
+    opts = opts || {};
+    var e = 16 * k, r = 4.6 * k;
+    var eyes = [-e, e].map(function (dx) {
+      return '<ellipse cx="' + (x + dx) + '" cy="' + y + '" rx="' + r + '" ry="' + (r * 1.15) + '" fill="' + (opts.eye || EYE) + '"/>' +
+             '<circle cx="' + (x + dx - r * .35) + '" cy="' + (y - r * .45) + '" r="' + (r * .38) + '" fill="#fff"/>';
+    }).join("");
+    var m = 'M' + (x - 5 * k) + ' ' + (y + 6 * k) + ' q' + (2.5 * k) + ' ' + (3 * k) + ' ' + (5 * k) + ' 0 q' + (2.5 * k) + ' ' + (3 * k) + ' ' + (5 * k) + ' 0';
+    var blush = opts.noBlush ? '' : [-1, 1].map(function (s) {
+      return '<ellipse cx="' + (x + s * 27 * k) + '" cy="' + (y + 7 * k) + '" rx="' + (7 * k) + '" ry="' + (4 * k) + '" fill="#FF7F8E" opacity=".42" filter="url(#' + u + 'b1)"/>';
+    }).join("");
+    return blush + eyes + '<path d="' + m + '" stroke="' + (opts.eye || EYE) + '" stroke-width="' + (1.7 * k) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  function gloss(u, x, y, rx, ry, rot, op) {
+    return '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" transform="rotate(' + (rot || 0) + ' ' + x + ' ' + y + ')" fill="#fff" opacity="' + (op || .55) + '" filter="url(#' + u + 'b3)"/>';
+  }
+  function rim(u, d) {   // soft inner edge so foam reads as rounded, not flat
+    return '<path d="' + d + '" fill="none" stroke="#000" stroke-opacity=".10" stroke-width="6" filter="url(#' + u + 'b3)" clip-path="url(#' + u + 'clip)"/>' +
+           '<clipPath id="' + u + 'clip"><path d="' + d + '"/></clipPath>';
+  }
+  function body(u, d) { return '<path d="' + d + '" fill="url(#' + u + 'g)"/>' + rim(u, d); }
+
+  var KINDS = {
+    cat: function (u, c) {
+      var d = "M40 150C34 112 42 76 62 62L58 30 86 50C95 47 105 47 114 50L142 30 138 62C158 76 166 112 160 150 158 162 142 166 100 166S42 162 40 150Z";
+      return body(u, d) +
+        '<path d="M64 38 82 52 68 60Z" fill="' + c.a + '" opacity=".55"/><path d="M136 38 118 52 132 60Z" fill="' + c.a + '" opacity=".55"/>' +
+        gloss(u, 72, 82, 18, 9, -25) + face(u, 100, 108, 1.1) +
+        '<path d="M60 112h-16M60 118l-14 4M140 112h16M140 118l14 4" stroke="' + c.d + '" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>';
+    },
+    bun: function (u, c) {
+      var d = "M34 150C34 98 62 62 100 62S166 98 166 150C166 162 142 167 100 167S34 162 34 150Z";
+      var pleats = [-34, -18, 0, 18, 34].map(function (dx) {
+        return '<path d="M100 66Q' + (100 + dx * .6) + ' 74 ' + (100 + dx) + ' 84" stroke="' + c.d + '" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".55"/>';
+      }).join("");
+      return body(u, d) + pleats + '<circle cx="100" cy="66" r="5" fill="' + c.d + '" opacity=".5"/>' +
+        gloss(u, 68, 96, 16, 9, -30) + face(u, 100, 122, 1);
+    },
+    strawberry: function (u, c) {
+      var d = "M100 166C68 152 38 122 40 92 42 64 70 56 100 66 130 56 158 64 160 92 162 122 132 152 100 166Z";
+      var seeds = "";
+      [[64,94],[84,86],[116,86],[136,94],[58,118],[142,118],[74,140],[126,140],[100,150],[88,112],[112,112]].forEach(function (p) {
+        seeds += '<ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="2.2" ry="3.4" fill="#FCE58A" opacity=".95"/>';
+      });
+      var leaf = '<path d="M100 72C88 60 70 62 62 70 76 70 84 74 90 78 78 82 72 92 74 100 84 90 94 84 100 82 106 84 116 90 126 100 128 92 122 82 110 78 116 74 124 70 138 70 130 62 112 60 100 72Z" fill="' + c.a + '"/>' +
+                 '<path d="M100 72V56" stroke="#3E7A30" stroke-width="4" stroke-linecap="round"/>';
+      return body(u, d) + seeds + leaf + gloss(u, 66, 100, 12, 7, -40) + face(u, 100, 116, .95);
+    },
+    toast: function (u, c) {
+      var outer = "M44 160V88C28 82 28 50 58 42 72 28 128 28 142 42 172 50 172 82 156 88V160C156 164 152 167 148 167H52C48 167 44 164 44 160Z";
+      var inner = "M55 156V83C43 77 43 57 62 52 76 40 124 40 138 52 157 57 157 77 145 83V156Z";
+      return '<path d="' + outer + '" fill="' + c.d + '"/>' + rim(u, outer) +
+        '<path d="' + inner + '" fill="url(#' + u + 'g)"/>' +
+        '<rect x="80" y="62" width="40" height="30" rx="7" transform="rotate(-8 100 77)" fill="' + c.a + '"/>' +
+        '<rect x="84" y="64" width="18" height="8" rx="4" transform="rotate(-8 100 77)" fill="#fff" opacity=".5"/>' +
+        gloss(u, 72, 110, 10, 16, 0, .35) + face(u, 100, 124, 1);
+    },
+    peach: function (u, c) {
+      var d = "M100 165C58 165 38 136 40 106 42 76 66 58 92 64 96 65 98 67 100 69 102 67 104 65 108 64 134 58 158 76 160 106 162 136 142 165 100 165Z";
+      return body(u, d) +
+        '<path d="M100 72C92 98 94 130 100 158" stroke="' + c.d + '" stroke-width="4" fill="none" opacity=".35" filter="url(#' + u + 'b1)"/>' +
+        '<path d="M102 66C110 48 132 44 146 50 136 62 118 68 102 66Z" fill="' + c.a + '"/>' +
+        '<path d="M104 64C116 58 128 54 140 52" stroke="#3E7A30" stroke-width="1.4" fill="none" opacity=".6"/>' +
+        gloss(u, 66, 94, 14, 9, -35) + face(u, 100, 122, .9);
+    },
+    panda: function (u, c) {
+      var d = "M38 128C38 92 64 66 100 66S162 92 162 128 140 167 100 167 38 164 38 128Z";
+      return '<circle cx="56" cy="74" r="17" fill="' + c.a + '"/><circle cx="144" cy="74" r="17" fill="' + c.a + '"/>' + body(u, d) +
+        '<ellipse cx="80" cy="112" rx="13" ry="16" transform="rotate(20 80 112)" fill="' + c.a + '"/>' +
+        '<ellipse cx="120" cy="112" rx="13" ry="16" transform="rotate(-20 120 112)" fill="' + c.a + '"/>' +
+        '<circle cx="81" cy="112" r="4.5" fill="#fff"/><circle cx="119" cy="112" r="4.5" fill="#fff"/>' +
+        '<ellipse cx="100" cy="128" rx="6" ry="4" fill="' + c.a + '"/>' +
+        '<path d="M95 135q2.5 3 5 0q2.5 3 5 0" stroke="' + c.a + '" stroke-width="1.7" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="66" cy="136" rx="8" ry="4.5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/><ellipse cx="134" cy="136" rx="8" ry="4.5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/>' +
+        gloss(u, 70, 88, 16, 8, -30);
+    },
+    donut: function (u, c) {
+      var d = "M100 50A62 58 0 1 1 99.9 50Z";
+      var icing = "M44 104C44 76 70 56 100 56S156 76 156 104C156 114 150 118 146 112 142 124 134 126 132 116 126 130 116 128 116 118 108 132 94 130 92 118 84 128 74 126 72 114 64 124 54 120 56 110 50 118 44 114 44 104Z";
+      var cols = ["#FFFFFF", "#7FC8F0", "#FFD84A", "#8BD17C", "#B99AF0"];
+      var spr = "";
+      [[64,86,20],[78,70,-30],[122,68,40],[140,90,-10],[70,104,60],[132,108,-50],[92,64,10],[112,98,80],[86,98,-60],[146,76,30]].forEach(function (p, i) {
+        spr += '<rect x="' + (p[0] - 5) + '" y="' + (p[1] - 1.6) + '" width="10" height="3.2" rx="1.6" fill="' + cols[i % cols.length] + '" transform="rotate(' + p[2] + ' ' + p[0] + ' ' + p[1] + ')"/>';
+      });
+      return body(u, d) +
+        '<path d="' + icing + '" fill="' + c.a + '"/>' + gloss(u, 72, 74, 16, 7, -25, .5) + spr +
+        '<ellipse cx="100" cy="92" rx="18" ry="12" fill="' + c.d + '"/><ellipse cx="100" cy="94" rx="15" ry="9" fill="#EDEAE3"/>' +
+        face(u, 100, 138, .85);
+    },
+    avocado: function (u, c) {
+      var outer = "M100 36C124 36 132 60 140 84 154 118 152 167 100 167S46 118 60 84C68 60 76 36 100 36Z";
+      var inner = "M100 46C118 46 125 66 132 88 144 118 142 158 100 158S56 118 68 88C75 66 82 46 100 46Z";
+      return '<path d="' + outer + '" fill="' + c.b + '"/>' + rim(u, outer) +
+        '<path d="' + inner + '" fill="url(#' + u + 'g)"/>' +
+        '<circle cx="100" cy="126" r="22" fill="' + c.a + '"/>' + gloss(u, 92, 118, 7, 5, -30, .5) +
+        face(u, 100, 86, .72) + gloss(u, 84, 64, 6, 12, -15, .4);
+    },
+    frog: function (u, c) {
+      var d = "M28 152C28 110 60 84 100 84S172 110 172 152C172 162 150 167 100 167S28 162 28 152Z";
+      var bumps = '<circle cx="66" cy="86" r="21" fill="url(#' + u + 'g)"/><circle cx="134" cy="86" r="21" fill="url(#' + u + 'g)"/>';
+      var eyes = [66, 134].map(function (x) {
+        return '<circle cx="' + x + '" cy="84" r="12" fill="#fff"/><circle cx="' + x + '" cy="86" r="7" fill="' + EYE + '"/><circle cx="' + (x - 2.5) + '" cy="83" r="2.4" fill="#fff"/>';
+      }).join("");
+      return bumps + body(u, d) + eyes +
+        '<path d="M76 126Q100 142 124 126" stroke="' + EYE + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="58" cy="128" rx="9" ry="5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/><ellipse cx="142" cy="128" rx="9" ry="5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/>' +
+        '<ellipse cx="100" cy="152" rx="40" ry="10" fill="' + c.l + '" opacity=".6"/>' + gloss(u, 60, 76, 7, 4, -30, .6);
+    },
+    bunny: function (u, c) {
+      var d = "M44 128C44 100 68 82 100 82S156 100 156 128 138 167 100 167 44 156 44 128Z";
+      var ears = [[78, -10], [122, 10]].map(function (p) {
+        return '<ellipse cx="' + p[0] + '" cy="56" rx="14" ry="36" transform="rotate(' + p[1] + ' ' + p[0] + ' 86)" fill="url(#' + u + 'g)"/>' +
+               '<ellipse cx="' + p[0] + '" cy="58" rx="6" ry="24" transform="rotate(' + p[1] + ' ' + p[0] + ' 86)" fill="' + c.a + '" opacity=".6"/>';
+      }).join("");
+      return ears + body(u, d) + gloss(u, 72, 104, 14, 8, -30) + face(u, 100, 124, 1);
+    },
+    cloud: function (u, c) {
+      var d = "M44 156C22 156 18 126 40 118 34 94 62 80 80 94 86 66 128 62 134 90 154 80 178 98 166 120 186 128 180 156 160 156Z";
+      return body(u, d) + gloss(u, 92, 84, 16, 8, -15, .7) + face(u, 100, 128, 1, { eye: "#3A3F55" }) +
+        '<path d="M150 70v10M145 75h10" stroke="' + c.d + '" stroke-width="2" stroke-linecap="round"/><path d="M40 84v7M36.5 87.5h7" stroke="' + c.d + '" stroke-width="1.6" stroke-linecap="round"/>';
+    },
+    whale: function (u, c) {
+      var d = "M26 132C26 96 62 76 102 78 138 80 158 100 160 122L176 104C184 98 192 106 188 114L172 140C182 150 176 162 166 156L156 150C146 162 124 167 100 167 54 167 26 158 26 132Z";
+      return body(u, d) +
+        '<path d="M30 140C44 158 80 164 110 162 132 160 146 154 152 148 130 150 60 152 30 140Z" fill="' + c.a + '" opacity=".75"/>' +
+        '<path d="M84 72C80 60 72 56 66 58M84 72C88 58 96 54 102 56M84 72V56" stroke="' + c.d + '" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".7"/>' +
+        gloss(u, 64, 98, 20, 8, -20) + face(u, 76, 122, .9);
+    },
+    cupcake: function (u, c) {
+      var wrap = "M56 116H144L132 166H68Z";
+      var lines = [70, 84, 100, 116, 130].map(function (x) {
+        return '<path d="M' + x + ' 118L' + (100 + (x - 100) * .78) + ' 164" stroke="#000" stroke-opacity=".12" stroke-width="3"/>';
+      }).join("");
+      var d = "M48 122C36 108 50 92 64 96 60 76 86 70 96 80 102 62 132 66 128 88 146 86 160 106 150 122 140 130 60 132 48 122Z";
+      return '<path d="' + wrap + '" fill="' + c.a + '"/>' + lines + body(u, d) +
+        '<circle cx="106" cy="66" r="10" fill="#E53950"/><circle cx="103" cy="63" r="3" fill="#fff" opacity=".6"/>' +
+        '<path d="M108 56Q112 46 120 44" stroke="#4E7A2E" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        gloss(u, 76, 96, 12, 6, -25, .7) + face(u, 100, 142, .8, { eye: "#2A2226" });
+    },
+    pudding: function (u, c) {
+      var d = "M52 164C47 164 45 160 47 154L64 88C66 80 72 76 80 76H120C128 76 134 80 136 88L153 154C155 160 153 164 148 164Z";
+      var top = "M64 90C66 80 72 76 80 76H120C128 76 134 80 136 88L138 96C134 104 130 100 128 94 126 106 118 106 116 96 112 104 104 104 104 96 98 108 88 104 88 96 84 104 74 104 74 96 70 102 64 100 64 90Z";
+      return body(u, d) + '<path d="' + top + '" fill="' + c.a + '"/>' + gloss(u, 86, 82, 12, 3, 0, .5) +
+        gloss(u, 70, 126, 5, 18, 12, .45) + face(u, 100, 128, .95) +
+        '<ellipse cx="100" cy="166" rx="62" ry="5" fill="#fff" opacity=".6"/>';
+    },
+    seal: function (u, c) {
+      var d = "M24 150C20 118 50 94 90 94 130 94 152 110 162 128L180 120C188 116 192 128 184 134L168 148C164 162 140 167 100 167 50 167 26 162 24 150Z";
+      return body(u, d) +
+        '<path d="M92 150C104 144 118 146 124 156" stroke="' + c.d + '" stroke-width="3" fill="none" stroke-linecap="round" opacity=".5"/>' +
+        gloss(u, 64, 110, 18, 7, -18) + face(u, 66, 126, .85, { noBlush: false }) +
+        '<ellipse cx="66" cy="136" rx="4" ry="3" fill="' + c.a + '"/>' +
+        '<path d="M50 134h-14M50 138l-12 4M82 134h14M82 138l12 4" stroke="' + c.d + '" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>';
+    }
+  };
+
   function photo(s) {
-    var b = BLOBS[hash(s.id) % BLOBS.length];
-    return '<svg viewBox="0 0 100 100" width="100%" height="100%" aria-hidden="true">' +
-      '<path d="' + b + '" fill="' + s.pal[0] + '"/>' +
-      '<path d="M36 36c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/>' +
-      '<path d="M64 36c4 0 7 3 7 7s-3 7-7 7-7-3-7-7 3-7 7-7z" fill="#fff" opacity=".85"/></svg>';
+    var u = "q" + (UID++);
+    return '<svg viewBox="0 0 200 200" width="100%" height="100%" aria-hidden="true" style="display:block">' +
+      '<defs>' + rg(u + "g", s.c) +
+      '<radialGradient id="' + u + 'bg" cx="50%" cy="38%" r="80%"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#ECEAE4"/></radialGradient>' +
+      '<filter id="' + u + 'b6" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>' +
+      '<filter id="' + u + 'b3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>' +
+      '<filter id="' + u + 'b1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>' +
+      '</defs>' +
+      '<rect width="200" height="200" fill="url(#' + u + 'bg)"/>' +
+      '<ellipse cx="100" cy="169" rx="60" ry="8" fill="#3A3020" opacity=".22" filter="url(#' + u + 'b6)"/>' +
+      '<ellipse cx="100" cy="167" rx="44" ry="3.5" fill="#3A3020" opacity=".18" filter="url(#' + u + 'b1)"/>' +
+      KINDS[s.kind](u, s.c) + '</svg>';
   }
   function palHTML(s) { return '<span class="pal">' + s.pal.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + '</span>'; }
   function mono4(f) {
@@ -712,14 +922,14 @@ body {
   });
 
   var maya = FRIENDS.maya, zoe = FRIENDS.zoe;
-  var INC = { give: maya.items[0], get: MINE[0] };   // Maya offers Sky Bao for your Ember Blob
+  var INC = { give: maya.items[0], get: MINE[0] };   // Maya offers Blue Whale for your Strawberry Mochi
 
   document.querySelectorAll("[data-request-mini]").forEach(function (el) {
     el.innerHTML = '<div class="tcard" style="display:flex;align-items:center;gap:13px">' +
       '<div class="plate" style="width:52px;border-radius:12px;flex:none">' + photo(INC.give) + '</div>' +
       '<span class="dim">' + SWAP + '</span>' +
       '<div class="plate" style="width:52px;border-radius:12px;flex:none">' + photo(INC.get) + '</div>' +
-      '<div style="flex:1;min-width:0"><div class="D4">Maya</div><div class="M1 dim" style="margin-top:3px">Wants your Ember Blob</div></div>' + CHEV + '</div>';
+      '<div style="flex:1;min-width:0"><div class="D4">Maya</div><div class="M1 dim" style="margin-top:3px">Wants your ' + INC.get.name + '</div></div>' + CHEV + '</div>';
   });
 
   function friendRowsHTML() {
@@ -768,9 +978,48 @@ body {
           '<div class="check"><span class="cbox"></span><span class="B1">You hand over <b class="body-600">' + you.name + '</b></span></div>' +
         '</div></div>' +
       '<div class="sechead" style="padding-top:34px"><span class="M1 ink">Done</span><span class="M1 dim">1</span></div>' +
-      '<div class="frow" style="border-top:0">' + row(FRIENDS.zoe.items[3], "From Zoe &middot; 21 Sep 2026") + '</div>';
+      '<div class="frow" style="border-top:0">' + row(S("d1", "Pink Bao", "bun", 8, 60, 50, { b: "#F8D3DA", l: "#FFF0F3", d: "#DDA1AE", a: "#F2A0B0" }), "From Zoe &middot; 21 Sep 2026") + '</div>';
   }
   document.querySelectorAll('[data-trades]').forEach(function (el) { el.innerHTML = tradesHTML(); });
+
+  /* ---------- gallery ---------- */
+  var OWNERS = [["You", MINE], ["Zoe", FRIENDS.zoe.items], ["Maya", FRIENDS.maya.items], ["Ren", FRIENDS.ren.items]];
+  document.querySelector("[data-gallery]").innerHTML = OWNERS.map(function (o) {
+    return o[1].map(function (s) {
+      return '<div><div class="plate">' + photo(s) + '</div>' +
+        '<div class="D4 cardname">' + s.name + '</div>' +
+        '<div class="M1 dim own">' + (o[0] === "You" ? "Yours" : o[0]) + ' &middot; ' + s.w + '&times;' + s.h + ' mm</div>' +
+        '<div class="meta">' + palHTML(s) + '<span class="M2 ink">' + pad(s.squish) + '</span></div></div>';
+    }).join("");
+  }).join("");
+
+  /* ---------- specimen sheet (F2b) — frozen durometer, UX-SPEC §5.1 geometry ---------- */
+  (function () {
+    var s = FRIENDS.zoe.items[0];
+    document.querySelector("[data-hero]").innerHTML = photo(s).replace('height="100%"', 'height="100%" preserveAspectRatio="xMidYMid slice"');
+    var H = 56, bars = "";
+    var k = (s.squish - 1) / 9;
+    for (var i = 1; i <= 10; i++) {
+      var on = i <= s.squish, kk = on ? k : 0;
+      var w = 12 + 14 * kk, hb = H - (i - 1) * (14 / 9), h = hb * (12 / w), rr = Math.min(3 + 10 * kk, w / 2, h / 2);
+      bars += '<span><b style="display:block;width:' + (w * .7).toFixed(1) + 'px;height:' + h.toFixed(1) + 'px;border-radius:' + rr.toFixed(1) + 'px;background:' + (on ? s.c.d : "#DDDBD4") + '"></b></span>';
+    }
+    var tot = 0, props = [52, 26, 14, 8];
+    document.querySelector("[data-sheet]").innerHTML =
+      '<div class="grab"></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:flex-start">' +
+        '<div><div class="D3">' + s.name + '</div><div class="M1 dim" style="margin-top:4px">On Zoe\'s shelf &middot; open to trade</div></div>' +
+        '<div class="D1">' + s.squish + '</div></div>' +
+      '<div class="sduro" style="margin-top:13px" role="img" aria-label="Squish ' + s.squish + ' of 10">' + bars + '</div>' +
+      '<div class="srows" style="margin-top:13px">' +
+        '<div class="r"><span class="M1 dim k">Width</span><span class="M2 ink">' + s.w + ' MM</span></div>' +
+        '<div class="r"><span class="M1 dim k">Height</span><span class="M2 ink">' + s.h + ' MM</span></div>' +
+        '<div class="r"><span class="M1 dim k">Measured</span><span class="M1 ink">LiDAR &middot; on Zoe\'s phone</span></div>' +
+        '<div class="r"><span class="M1 dim k">Form</span><span class="M1 ink">Animal &middot; cat</span></div>' +
+        '<div class="r"><span class="M1 dim k">Since</span><span class="M1 ink">Mar 2026</span></div>' +
+      '</div>' +
+      '<div class="propbar">' + s.pal.map(function (c, i) { return '<i style="display:block;width:' + props[i] + '%;background:' + c + '"></i>'; }).join("") + '</div>';
+  })();
 
   /* ---------- picker behaviour (shared by F3 and the iPad sheet) ---------- */
   function wirePicker(root, gridSel, countSel, sendSel, presetSel) {
