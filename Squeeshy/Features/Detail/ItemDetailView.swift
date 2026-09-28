@@ -196,6 +196,16 @@ struct ItemDetailView: View {
                 Button { route = .addToShelf } label: {
                     Label("Add to collection", systemImage: "plus.rectangle.on.folder")
                 }
+                // Friends see every squeeshy; kept ones just can't be asked for.
+                if let hero {
+                    Button {
+                        hero.isKeeping.toggle()
+                        try? context.save()
+                    } label: {
+                        Label(hero.isKeeping ? "Open to trade" : "Keep — not for trading",
+                              systemImage: hero.isKeeping ? "arrow.left.arrow.right" : "lock")
+                    }
+                }
                 Button(role: .destructive) { confirmingDelete = true } label: {
                     Label("Delete squeeshy", systemImage: "trash")
                 }
@@ -257,13 +267,23 @@ struct ItemDetailView: View {
                 ratingButton(for: hero)
                     .padding(.top, 16)
 
-                MetaLabel(text: "tap to play · swipe through your squeeshies", color: .ink3)
+                MetaLabel(text: provenanceCaption(for: hero) ?? "tap to play · swipe through your squeeshies",
+                          color: .ink3)
                     .padding(.top, 14)
             }
 
             Spacer(minLength: 8)
         }
         .animation(Motion.arrive, value: fan.index)
+    }
+
+    /// Where a traded squeeshy came from: "from Mia · Oct 2026". Nil for one
+    /// photographed here.
+    private func provenanceCaption(for hero: Squishy) -> String? {
+        guard let from = hero.acquiredFrom else { return nil }
+        var caption = "from \(from) · \(hero.addedAt.formatted(.dateTime.month(.abbreviated).year()))"
+        if hero.isKeeping { caption += " · keeping" }
+        return caption
     }
 
     /// Tap the name to rename it. A `Button` rather than a tap gesture on the `Text`:

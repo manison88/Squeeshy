@@ -4,6 +4,7 @@ import SwiftData
 /// The front door. Smart shelves generated from traits, then any shelves made by hand.
 struct CollectionsView: View {
     @Environment(\.modelContext) private var context
+    @Environment(FriendsStore.self) private var friendsStore
     @Query(sort: \Squishy.addedAt, order: .reverse) private var squishies: [Squishy]
     @Query(sort: \Shelf.createdAt) private var shelves: [Shelf]
 
@@ -46,6 +47,9 @@ struct CollectionsView: View {
     /// Split-view only: which shelf the detail column is showing, and its own stack for
     /// pushing a squeeshy on top of it.
     @State private var selection: ShelfRef?
+    /// Split-view only: a friends screen in the detail column instead of a shelf.
+    /// Kept apart from `selection` so shelves need to know nothing about friends.
+    @State private var friendsSelection: FriendsRoute?
     @State private var detailPath = NavigationPath()
 
     private var tint: Tint { Tint.sampled(from: squishies.map(\.hue)) }
@@ -119,6 +123,7 @@ struct CollectionsView: View {
             .navigationDestination(for: ShelfRef.self) { ref in
                 destination(for: ref)
             }
+            .friendsDestinations()
         }
     }
 
@@ -138,7 +143,9 @@ struct CollectionsView: View {
             NavigationStack(path: $detailPath) {
                 ZStack {
                     AdaptiveBackground(tint: tint)
-                    if let selection {
+                    if let friendsSelection {
+                        FriendsDestination(route: friendsSelection, isRoot: true)
+                    } else if let selection {
                         destination(for: selection, isRoot: true)
                     } else {
                         nothingSelected
@@ -147,6 +154,7 @@ struct CollectionsView: View {
                 .navigationDestination(for: ShelfRef.self) { ref in
                     destination(for: ref)
                 }
+                .friendsDestinations()
             }
         }
         .navigationSplitViewStyle(.balanced)
@@ -209,6 +217,7 @@ struct CollectionsView: View {
                 // Reset the pushed squeeshy, or the new shelf opens under the old one's
                 // detail view.
                 detailPath = NavigationPath()
+                friendsSelection = nil
                 selection = ref
             } label: { content() }
             .buttonStyle(.tap)
@@ -276,6 +285,10 @@ struct CollectionsView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.top, 6)
                     }
+
+                    if search.isEmpty {
+                        friendsSection
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 40)
@@ -294,6 +307,9 @@ struct CollectionsView: View {
                 MetaLabel(text: "\(squishies.count) squeeshies · \(populatedSmartShelves.count + shelves.count) shelves")
             }
             Spacer()
+            if !isWide {
+                friendsButton
+            }
             ThemeToggle(theme: Binding(
                 get: { AppTheme(rawValue: theme) ?? .dark },
                 set: { theme = $0.rawValue }))
@@ -324,6 +340,76 @@ struct CollectionsView: View {
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
+    }
+
+    // MARK: Friends
+
+    /// A glass circle like its neighbours, with a count of anything waiting on this
+    /// user. Phone only: on the iPad the sidebar's Friends section does this job.
+    private var friendsButton: some View {
+        Button { openFriends(.friends) } label: {
+            Image(systemName: "person.2.fill")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color.ink)
+                .frame(width: 38, height: 38)
+                .glassEffect(.regular.interactive(), in: .circle)
+                .overlay(alignment: .topTrailing) {
+                    if friendsStore.badgeCount > 0 {
+                        CountBadge(count: friendsStore.badgeCount)
+                            .offset(x: 5, y: -5)
+                    }
+                }
+        }
+        .buttonStyle(.tap)
+        .accessibilityIdentifier("friends")
+        .accessibilityLabel("Friends")
+        .accessibilityValue(friendsStore.badgeCount > 0 ? "\(friendsStore.badgeCount) waiting" : "")
+    }
+
+    @ViewBuilder
+    private var friendsSection: some View {
+        sectionLabel("Friends")
+        friendsLink(.friends) {
+            FriendsLinkRow(systemImage: "person.2",
+                           title: "Friends",
+                           caption: friendsCaption,
+                           badge: friendsStore.waitingForMe.count)
+        }
+        friendsLink(.table) {
+            FriendsLinkRow(systemImage: "person.2.wave.2",
+                           title: "Trade in person",
+                           caption: "a trade table, phone to phone")
+        }
+        if !friendsStore.trades.isEmpty || !friendsStore.tradedAway.isEmpty {
+            friendsLink(.trades) {
+                FriendsLinkRow(systemImage: "arrow.left.arrow.right",
+                               title: "Trades",
+                               caption: "\(friendsStore.inProgress.count) in progress",
+                               badge: friendsStore.inProgress.filter { !$0.iHandedOver }.count)
+            }
+        }
+    }
+
+    private var friendsCaption: String {
+        let count = friendsStore.friends.count
+        return count == 0 ? "see each other's squeeshies" : "\(count) \(count == 1 ? "friend" : "friends")"
+    }
+
+    /// Like `shelfLink`: pushes on the phone, fills the detail column on the iPad.
+    private func friendsLink<Content: View>(_ route: FriendsRoute,
+                                            @ViewBuilder content: () -> Content) -> some View {
+        Button { openFriends(route) } label: { content() }
+            .buttonStyle(.tap(22))
+    }
+
+    private func openFriends(_ route: FriendsRoute) {
+        if isWide {
+            detailPath = NavigationPath()
+            selection = nil
+            friendsSelection = route
+        } else {
+            path.append(route)
+        }
     }
 
     private var searchField: some View {

@@ -53,6 +53,25 @@ targets:
         # way the generated keys and this file end up merging.
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        # Friends & trading. Accepting an iCloud invite to a friend's squeeshies.
+        CKSharingSupported: true
+        # CloudKit's silent push when a friend's shelf or a trade changes.
+        UIBackgroundModes: [remote-notification]
+        # The trade table talks to the phone next to it directly.
+        NSLocalNetworkUsageDescription: "Squeeshy finds a friend's phone nearby so you can open a trade table together."
+        NSBonjourServices: [_squish-table._tcp, _squish-table._udp]
+    # Friends & trading: the shared shelf lives in this CloudKit container, and
+    # CloudKit subscriptions need push. Lives here rather than in Xcode's
+    # Signing & Capabilities editor for the same reason the team does: xcodegen
+    # would discard it. Xcode switches aps-environment to production on archive.
+    entitlements:
+      path: Squeeshy/Squeeshy.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.squeeshy.app
+        com.apple.developer.icloud-services:
+          - CloudKit
+        aps-environment: development
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES

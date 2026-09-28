@@ -291,6 +291,74 @@ transparent background with three lights and a slow idle turn, and drag orbits i
 `-openModel` shows it against a bundled stand-in mesh so the viewer can be worked on
 without spending quota.
 
+## Friends and trading
+
+Design and mockups: `Design/FRIENDS-AND-TRADING.md` and `Design/friends-trading.html`.
+Code: `Squeeshy/Features/Friends/`.
+
+- **Friends** — invite through iCloud (usually by Messages). Each person's squeeshies
+  are a CloudKit zone in *their own* iCloud, shared read-only with the friends they
+  invite. Friends see a small cut-out and the traits, never the full photo. Invite-only,
+  mutual, removable; no search, usernames or chat. Entry points: the people button in
+  the Collections header (phone) and the Friends section under the shelves (both).
+- **Trade requests** — open a friend's squeeshy, offer one or more of yours, add an
+  optional preset line. They accept or decline; each of you ticks *handed over* once the
+  real toys have swapped (in person or by post); then each device files the swap.
+- **Trade table** — two phones side by side, MultipeerConnectivity, no internet. Each
+  puts squeeshies in and votes ✓ / ✗. Both ✓ on the same table trades instantly.
+  Changing the table clears both votes, so a yes never carries over to a different
+  squeeshy, and the swap is only filed once both phones hold each other's squeeshies.
+
+A squeeshy you trade away leaves the collection the same way Delete removes it
+(shelves, cut-out, row), or loses one from `quantity` if you own more than one. The
+record of it moves to **Trades → Traded away**. One that arrives keeps its traits and
+cut-out and says where it came from under the hero ("from Mia · Oct 2026"). *Keep —
+not for trading* in the detail menu lets friends see it but not ask for it.
+
+### The collection stays local
+
+The CloudKit entitlement would, on its own, make SwiftData start mirroring every row
+into iCloud — rows without their cut-outs, which are files. `SqueeshyApp` opens the
+container with `ModelConfiguration(cloudKitDatabase: .none)` for that reason. Only the
+shelf zone `FriendsStore` manages goes to iCloud.
+
+### Finished trades are filed only on a friends screen
+
+Filing a trade deletes what was given away, and the field and detail screens hold
+snapshots of their squeeshies; reading a deleted model from one of those crashes. So
+`FriendsStore` files finished trades only while a friends screen is showing
+(`.filesReadyTrades()`), and until then counts them in the badge on the people button.
+
+### Setup
+
+The capabilities live in `project.yml` (entitlements block and `info.properties`), so
+`xcodegen generate` keeps them. Once, in the developer portal / Xcode:
+
+1. Create the iCloud container `iCloud.com.squeeshy.app` (Signing & Capabilities →
+   iCloud → +) if it doesn't exist. Then `xcodegen generate` again — the capability
+   comes from `project.yml`, not from the editor.
+2. Test friends on **two devices with two different iCloud accounts**; a share can't be
+   accepted by the account that owns it. The trade table needs two real devices too.
+3. Before App Store: run one invite and one trade on a development build so every
+   record type exists (`Profile`, `Specimen`, `TradeRequest`, `TradeReply`), then in the
+   CloudKit Console deploy the schema to Production. No indexes are needed — the app
+   never queries, it reads zones whole.
+
+### Testing without a second phone (Debug builds)
+
+Real iCloud friends never start in the Simulator: signing is off for the simulator
+SDK, so the build has no iCloud entitlement, and touching CloudKit without one raises
+an exception. `FriendsStore` checks `targetEnvironment(simulator)` and says so instead.
+The trade table's discovery works in the Simulator, but a table needs a second device.
+
+
+The Friends screen has a yellow debug panel. *Simulate iCloud friends* swaps iCloud for
+a pretend friend, Mia, who shares a collection, answers requests (accept / decline /
+ignore), hands over, and can sit at a trade table as the other phone. Launch with
+`-SimulateFriends YES` to start with it on, or `-FriendsSelfTest YES` to run every
+friends flow — requests, declines, cancels, the open-request limit, double-promising,
+and the trade-table protocol — and print `[SelfTest] PASS/FAIL` lines to the console.
+
 ## Not built yet
 
 - **Item management** — no way to delete a squeeshy, adjust a merged duplicate's

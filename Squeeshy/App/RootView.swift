@@ -6,6 +6,8 @@ import SwiftData
 /// Collections header with the other controls and the list runs clear to the bottom.
 struct RootView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(FriendsStore.self) private var friendsStore
     @Query private var squishies: [Squishy]
 
     @State private var showCapture = false
@@ -59,6 +61,32 @@ struct RootView: View {
             }
             #endif
         }
+        // Friends: sign in, publish the shelf whenever what friends can see changes,
+        // and catch up whenever the app comes back to the front.
+        .task { await friendsStore.start() }
+        .onChange(of: shelfSignature) { friendsStore.schedulePublish() }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await friendsStore.refresh() } }
+        }
+        .alert(shareBackTitle,
+               isPresented: Binding(get: { friendsStore.pendingShareBack != nil },
+                                    set: { if !$0 { friendsStore.pendingShareBack = nil } })) {
+            Button("Share mine") {
+                friendsStore.pendingShareBack = nil
+                Task {
+                    // Let the alert finish dismissing, or the sharing sheet has
+                    // nothing to present from and silently fails.
+                    try? await Task.sleep(for: .seconds(0.5))
+                    if let share = try? await friendsStore.shareForInvite() {
+                        CloudSharing.present(share: share, container: friendsStore.container,
+                                             title: "\(friendsStore.displayName)'s squeeshies")
+                    }
+                }
+            }
+            Button("Not now", role: .cancel) { friendsStore.pendingShareBack = nil }
+        } message: {
+            Text("Friends see each other's squeeshies. Share yours back so \(friendsStore.pendingShareBack?.name ?? "they") can see what you have.")
+        }
         .sheet(isPresented: $showCapture) {
             CaptureView()
                 .navigationTransition(.zoom(sourceID: "capture", in: captureTransition))
@@ -70,6 +98,15 @@ struct RootView: View {
         #endif
         // Applied once, at the root, so sheets and covers inherit it too.
         .preferredColorScheme(theme.colorScheme)
+    }
+
+    /// Changes whenever anything a friend could see changes.
+    private var shelfSignature: [String] {
+        squishies.map { "\($0.lineageID)|\($0.shelfRevision)|\($0.quantity)" }
+    }
+
+    private var shareBackTitle: String {
+        "You can see \(friendsStore.pendingShareBack?.name ?? "your friend")'s squeeshies"
     }
 
     private var collections: some View {

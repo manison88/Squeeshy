@@ -20,5 +20,18 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>CKSharingSupported</key>
+	<true/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_squish-table._tcp</string>
+		<string>_squish-table._udp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Squeeshy finds a friend's phone nearby so you can open a trade table together.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

@@ -74,6 +74,19 @@ final class Squishy {
     /// Manual shelves this squishy has been put on by hand.
     @Relationship(inverse: \Shelf.items) var shelves: [Shelf]? = []
 
+    // Friends & trading. All optional with defaults, so existing stores migrate
+    // without a schema version. See Features/Friends.
+
+    /// The identity that follows a squeeshy from owner to owner. Nil for one
+    /// photographed here, whose lineage is its own `id`.
+    var originID: UUID? = nil
+    /// Whose shelf it came from, when it arrived by trade.
+    var acquiredFrom: String? = nil
+    /// True hides the Request button on friends' copies of this shelf.
+    var keepFlag: Bool? = nil
+    /// JSON `[ProvenanceEntry]`: earlier owners, oldest first.
+    var provenanceData: Data? = nil
+
     init(name: String, species: Species, hue: Double, size: SizeClass,
          squeeshiness: Double, typeName: String, addedAt: Date = .now, isSample: Bool = false) {
         self.id = UUID()
