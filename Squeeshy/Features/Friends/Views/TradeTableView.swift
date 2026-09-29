@@ -15,6 +15,22 @@ struct TradeTableView: View {
 
     @State private var session = TradeTableSession()
 
+    // Animation state. The session decides *what* happened; these only stage it.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// 0 at rest, 1 mid-swap (lifted and crossing), 2 landed on the other side.
+    @State private var swapStep = 0
+    /// The swap has played out, so the celebration may take over once the trade is filed.
+    @State private var swapDone = false
+    @State private var boardWidth: CGFloat = 0
+    @State private var shake: CGFloat = 0
+    @State private var sweep: Double = 0
+    @State private var wiped = false
+    @State private var expanded: TableSide?
+    /// The running stagings, so a table that closes mid-animation can't have an old
+    /// animation land on the next one.
+    @State private var swapTask: Task<Void, Never>?
+    @State private var rejectionTask: Task<Void, Never>?
+
     /// Something already promised in a remote trade can't go on the table too.
     private var offerable: [Squishy] {
         let promised = store.promisedIDs
@@ -37,8 +53,16 @@ struct TradeTableView: View {
                             message: "Keep your phones close together.")
                 case .atTable:
                     table
-                case .traded(let received):
-                    traded(received)
+                case .traded:
+                    // Hold the table on screen until the swap has finished moving,
+                    // however quickly the two phones finished exchanging.
+                    if swapDone {
+                        TradedCelebration(received: session.theirs, given: session.mine, tint: tint,
+                                          onDone: leave, onAgain: restart)
+                            .transition(.opacity)
+                    } else {
+                        table
+                    }
                 case .ended(let message):
                     centred(title: "Table closed", message: message) {
                         TintedCTA(title: "Look again", tint: tint) { restart() }
@@ -57,15 +81,96 @@ struct TradeTableView: View {
                 .presentationDetents([.medium])
                 .interactiveDismissDisabled()
         }
-        .sensoryFeedback(.success, trigger: isTraded)
+        .overlay { expandedSeat }
+        .onChange(of: session.isSwapping) { _, swapping in
+            if swapping {
+                runSwap()
+            } else if !isTradedPhase {
+                // Two yeses that didn't become a trade (a late no, something left
+                // the collection): put the squeeshies back on their own seats.
+                swapTask?.cancel()
+                swapDone = false
+                withAnimation(Motion.arrive) { swapStep = 0 }
+            }
+        }
+        .onChange(of: session.rejection?.id) { _, id in
+            if id != nil { runRejection() } else { endRejection() }
+        }
+        .sensoryFeedback(trigger: isTradedPhase) { _, traded in traded ? .success : nil }
+        .sensoryFeedback(trigger: swapStep) { _, step in step == 1 ? .impact(weight: .medium) : nil }
+        .sensoryFeedback(trigger: session.rejection?.id) { _, id in id != nil ? .error : nil }
     }
 
-    private var isTraded: Bool {
+    // MARK: Staging
+
+    /// Two yeses: each side's squeeshies lift, cross in an arc through a burst of
+    /// the table's colours, and land on the other side. The celebration waits for
+    /// this to finish.
+    private func runSwap() {
+        withAnimation(Motion.tap) { expanded = nil }
+        swapTask?.cancel()
+        guard !reduceMotion else {
+            withAnimation(Motion.nav) { swapDone = true }
+            return
+        }
+        swapTask = Task {
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { swapStep = 1 }
+            try? await Task.sleep(for: .seconds(0.45))
+            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.62)) { swapStep = 2 }
+            try? await Task.sleep(for: .seconds(0.8))
+            guard !Task.isCancelled else { return }
+            withAnimation(Motion.nav) { swapDone = true }
+        }
+    }
+
+    private var isTradedPhase: Bool {
         if case .traded = session.phase { return true }
         return false
     }
 
+    /// A no: the stamp lands (NoTradeStamp animates itself), the board shakes,
+    /// and a sweep crosses it, taking the squeeshies with it. The session empties
+    /// the sides a moment later, which ends the rejection.
+    private func runRejection() {
+        withAnimation(Motion.tap) { expanded = nil }
+        rejectionTask?.cancel()
+        rejectionTask = Task {
+            if !reduceMotion {
+                for x in [-16.0, 13, -10, 7, -4, 0] {
+                    withAnimation(.spring(response: 0.08, dampingFraction: 0.5)) { shake = x }
+                    try? await Task.sleep(for: .milliseconds(65))
+                    guard !Task.isCancelled else { return }
+                }
+            }
+            try? await Task.sleep(for: .seconds(0.35))
+            guard !Task.isCancelled else { return }
+            if reduceMotion {
+                withAnimation(.easeOut(duration: 0.3)) { wiped = true }
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.7)) { sweep = 1 }
+            try? await Task.sleep(for: .seconds(0.3))
+            guard !Task.isCancelled else { return }
+            withAnimation(Motion.tap) { wiped = true }
+        }
+    }
+
+    private func endRejection() {
+        rejectionTask?.cancel()
+        rejectionTask = nil
+        wiped = false
+        sweep = 0
+        shake = 0
+    }
+
     private func restart() {
+        swapTask?.cancel()
+        swapTask = nil
+        swapStep = 0
+        swapDone = false
+        expanded = nil
+        endRejection()
         session.end()
         session.begin(displayName: store.displayName, userID: store.myUserID, context: context)
     }
@@ -180,6 +285,8 @@ struct TradeTableView: View {
                     board(large: false).padding(.horizontal, 20)
                 }
                 .scrollIndicators(.hidden)
+                // The swap lifts squeeshies above their seats; don't cut them off.
+                .scrollClipDisabled()
                 VStack(alignment: .leading, spacing: 8) {
                     MetaLabel(text: "your squeeshies")
                     ScrollView(.horizontal) {
@@ -208,25 +315,56 @@ struct TradeTableView: View {
     private func board(large: Bool) -> some View {
         VStack(spacing: large ? 30 : 18) {
             HStack(alignment: .top, spacing: 10) {
-                Seat(title: large ? "you put in" : "you",
-                     items: session.mine,
-                     vote: session.myCurrentVote,
-                     emptyText: "tap one of yours\nto put it in")
+                TableSeat(title: large ? "you put in" : "you",
+                          items: session.mine,
+                          vote: session.myCurrentVote,
+                          emptyText: "tap one of yours\nto put it in",
+                          isWiped: wiped,
+                          swapOffset: swapOffset(for: .mine),
+                          swapRotation: .degrees(swapStep == 1 ? 14 : 0),
+                          swapScale: swapStep == 1 ? 1.12 : 1) {
+                    withAnimation(Motion.arrive) { expanded = .mine }
+                }
+                .zIndex(swapStep > 0 ? 2 : 0)
+
                 Image(systemName: "arrow.left.arrow.right")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.ink3)
+                    .frame(width: 20)
                     .padding(.top, large ? 150 : 90)
+                    .opacity(swapStep > 0 ? 0 : 1)
                     .accessibilityHidden(true)
-                Seat(title: large ? "\(session.partnerName) puts in" : session.partnerName,
-                     items: session.theirs,
-                     vote: session.theirCurrentVote,
-                     emptyText: "waiting for\n\(session.partnerName)")
+
+                TableSeat(title: large ? "\(session.partnerName) puts in" : session.partnerName,
+                          items: session.theirs,
+                          vote: session.theirCurrentVote,
+                          emptyText: "waiting for\n\(session.partnerName)",
+                          isWiped: wiped,
+                          swapOffset: swapOffset(for: .theirs),
+                          swapRotation: .degrees(swapStep == 1 ? -14 : 0),
+                          swapScale: swapStep == 1 ? 1.12 : 1) {
+                    withAnimation(Motion.arrive) { expanded = .theirs }
+                }
+                .zIndex(swapStep > 0 ? 1 : 0)
             }
             .padding(.top, 6)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { boardWidth = $0 }
+            .overlay { SwapGlow(tint: tint, isActive: swapStep == 1) }
+            .overlay { SweepBar(progress: sweep) }
+            .overlay {
+                if let rejection = session.rejection {
+                    NoTradeStamp(reason: rejection.reason, partner: session.partnerName)
+                        .transition(.opacity)
+                }
+            }
+            .offset(x: shake)
+            .animation(Motion.tap, value: session.rejection?.id)
 
             MetaLabel(text: session.statusLine)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
+                .contentTransition(.opacity)
+                .animation(Motion.tap, value: session.statusLine)
                 .accessibilityAddTraits(.updatesFrequently)
 
             HStack(spacing: 12) {
@@ -235,32 +373,60 @@ struct TradeTableView: View {
                 VoteButton(title: "Trade", systemImage: "checkmark", isYes: true,
                            isChosen: session.myCurrentVote == true, tint: tint) { session.vote(true) }
             }
-            .disabled(!session.bothSidesFilled)
-            .opacity(session.bothSidesFilled ? 1 : 0.35)
+            .disabled(!canVote)
+            .opacity(canVote ? 1 : 0.35)
+        }
+    }
+
+    private var canVote: Bool { session.bothSidesFilled && session.canChangeTable }
+
+    /// How far each side's squeeshies travel to land on the other seat: the
+    /// distance between the two seat centres. Lifted one way and dropped the other
+    /// mid-flight, so they cross in an arc rather than colliding.
+    private func swapOffset(for side: TableSide) -> CGSize {
+        let travel = (boardWidth + 40) / 2
+        let direction: CGFloat = side == .mine ? 1 : -1
+        switch swapStep {
+        case 1: return CGSize(width: direction * travel / 2, height: side == .mine ? -44 : 44)
+        case 2: return CGSize(width: direction * travel, height: 0)
+        default: return .zero
+        }
+    }
+
+    /// A seat opened up to show everything on that side.
+    @ViewBuilder
+    private var expandedSeat: some View {
+        if let side = expanded, case .atTable = session.phase {
+            ZStack {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture { withAnimation(Motion.tap) { expanded = nil } }
+                    .accessibilityHidden(true)
+                SeatExpanded(title: side == .mine ? "You put in" : "\(session.partnerName) puts in",
+                             items: side == .mine ? session.mine : session.theirs,
+                             canRemove: side == .mine && session.canChangeTable,
+                             onRemove: { id in
+                                 withAnimation(Motion.arrive) { session.remove(itemID: id) }
+                                 if session.mine.isEmpty {
+                                     withAnimation(Motion.tap) { expanded = nil }
+                                 }
+                             },
+                             onClose: { withAnimation(Motion.tap) { expanded = nil } })
+                    .transition(.scale(scale: 0.7, anchor: side == .mine ? .leading : .trailing)
+                        .combined(with: .opacity))
+            }
+            .transition(.opacity)
         }
     }
 
     private func shelfTile(_ squishy: Squishy) -> some View {
         PickTile(name: squishy.name,
                  tint: squishy.color,
-                 isOn: session.contains(squishy)) {
+                 isOn: session.contains(squishy),
+                 isEnabled: session.canChangeTable) {
             SquishyImage(squishy: squishy)
         } action: {
             session.toggle(squishy)
-        }
-    }
-
-    // MARK: Traded
-
-    private func traded(_ received: [String]) -> some View {
-        centred(title: received.isEmpty ? "Traded"
-                    : "\(received.joined(separator: " and ")) \(received.count == 1 ? "is" : "are") yours",
-                message: "Swap the real squeeshies now. What you got is in your collection with its cut-out and traits, and what you gave is under Trades → Traded away.",
-                stamp: true) {
-            VStack(spacing: 10) {
-                TintedCTA(title: "Done", tint: tint) { leave() }
-                GlassCTA(title: "Trade again") { restart() }
-            }
         }
     }
 
@@ -304,83 +470,6 @@ struct TradeTableView: View {
 }
 
 // MARK: - Pieces
-
-private struct Seat: View {
-    var title: String
-    var items: [TradeTableSession.TableItem]
-    var vote: Bool?
-    var emptyText: String
-
-    var body: some View {
-        VStack(spacing: 8) {
-            HStack {
-                MetaLabel(text: title, color: .ink)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                VoteMark(vote: vote)
-            }
-            Group {
-                if let first = items.first {
-                    LooseSquishyImage(image: first.image, species: first.species, color: first.color)
-                        .padding(14)
-                        .overlay(alignment: .bottomTrailing) {
-                            if items.count > 1 {
-                                Text("+\(items.count - 1)")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundStyle(Color.ink)
-                                    .padding(.horizontal, 8)
-                                    .frame(height: 24)
-                                    .glassEffect(.regular, in: .capsule)
-                                    .padding(8)
-                            }
-                        }
-                        .transition(.scale(scale: 0.85).combined(with: .opacity))
-                } else {
-                    RoundedRectangle(cornerRadius: 24)
-                        .strokeBorder(Color.ink3, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
-                        .overlay(MetaLabel(text: emptyText, color: .ink3).multilineTextAlignment(.center))
-                }
-            }
-            .aspectRatio(1, contentMode: .fit)
-            .glassEffect(.regular, in: .rect(cornerRadius: 24))
-            Text(items.map(\.name).joined(separator: " + "))
-                .font(.display(15, .semibold))
-                .foregroundStyle(Color.ink)
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(minHeight: 20)
-        }
-        .frame(maxWidth: .infinity)
-        .animation(Motion.arrive, value: items)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(title)
-        .accessibilityValue(items.isEmpty ? "Empty" : items.map(\.name).joined(separator: ", "))
-    }
-}
-
-/// ✓ / ✗ / thinking — a shape and a word, never colour alone.
-private struct VoteMark: View {
-    var vote: Bool?
-
-    var body: some View {
-        HStack(spacing: 5) {
-            Image(systemName: vote == true ? "checkmark.circle.fill"
-                  : vote == false ? "xmark.circle" : "circle.dashed")
-                .font(.system(size: 14, weight: .semibold))
-            Text(vote == true ? "YES" : vote == false ? "NO" : "THINKING")
-                .font(.mono(9, .semibold))
-                .tracking(1)
-        }
-        .foregroundStyle(vote == nil ? Color.ink3 : Color.ink)
-        .padding(.horizontal, 8)
-        .frame(height: 24)
-        .glassEffect(.regular, in: .capsule)
-        .contentTransition(.symbolEffect(.replace))
-        .animation(Motion.tap, value: vote)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(vote == true ? "Voted yes" : vote == false ? "Voted no" : "Not voted yet")
-    }
-}
 
 private struct VoteButton: View {
     var title: String

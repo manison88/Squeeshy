@@ -315,6 +315,7 @@ final class SimulatedTablePartner {
     let outbound = SimulatedLink()
     /// Votes yes as soon as this user does.
     var autoYes = true
+    private var afterWipe = false
 
     private(set) var mine: [SpecimenPayload] = []
     private var theirs: [TradeTableSession.TableItem] = []
@@ -360,7 +361,21 @@ final class SimulatedTablePartner {
         guard !mine.isEmpty, !theirs.isEmpty else { return }
         myVote = (tableKey, yes)
         send(.vote(key: tableKey, yes: yes))
-        advance()
+        if yes { advance() } else { wipeSoon() }
+    }
+
+    /// Mirrors the real session: after a no, clear this side if it is unchanged.
+    private func wipeSoon() {
+        let snapshot = Set(mine.map(\.lineageID))
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: TradeTableSession.wipeDelay)
+            guard let self, Set(self.mine.map(\.lineageID)) == snapshot else { return }
+            self.mine = []
+            self.afterWipe = true
+            self.myVote = nil
+            self.theirVote = nil
+            self.sendTable()
+        }
     }
 
     // MARK: Protocol
@@ -369,10 +384,21 @@ final class SimulatedTablePartner {
         switch message {
         case .table(let items):
             theirs = items
-            if autoYes, mine.isEmpty { putInRandom() }
+            // Straight after a wipe the player's side comes back empty; wait for them
+            // to put something new in rather than refilling the table at once.
+            if autoYes, mine.isEmpty, !afterWipe || !items.isEmpty {
+                afterWipe = false
+                putInRandom()
+            }
         case .vote(let key, let yes):
             theirVote = (key, yes)
-            if autoYes, yes, key == tableKey, myVote?.key != key { vote(true) } else { advance() }
+            if !yes, key == tableKey {
+                wipeSoon()
+            } else if autoYes, yes, key == tableKey, myVote?.key != key {
+                vote(true)
+            } else {
+                advance()
+            }
         case .payload(let key, let specimens):
             guard key == tableKey, Set(specimens.map(\.lineageID.uuidString)) == Set(theirs.map(\.id)) else { return }
             gotPayload = (key, specimens)

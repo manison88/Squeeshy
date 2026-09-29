@@ -172,6 +172,23 @@ enum FriendsSelfTest {
         check("partner leaving closes the table", { if case .ended = session.phase { true } else { false } }())
         session.end()
 
+        // A no plays out, then wipes both sides clean.
+        session = TradeTableSession()
+        session.begin(displayName: store.displayName, userID: store.myUserID, context: context)
+        await waitFor("partner nearby for a no") { !session.nearby.isEmpty }
+        session.open(with: session.nearby[0])
+        await waitFor("table opens for a no") { if case .atTable = session.phase { true } else { false } }
+        session.toggle(held(context)[0])
+        await waitFor("both sides filled for a no") { session.bothSidesFilled }
+        session.vote(false)
+        check("saying no starts the rejection", session.rejection?.byMe == true)
+        check("the table locks during a no", !session.canChangeTable)
+        await waitFor("a no wipes both sides", timeout: 6) {
+            session.rejection == nil && session.mine.isEmpty && session.theirs.isEmpty
+        }
+        check("votes cleared after the wipe", session.myCurrentVote == nil && session.theirCurrentVote == nil)
+        session.end()
+
         // They invite me.
         session = TradeTableSession()
         session.begin(displayName: store.displayName, userID: store.myUserID, context: context)

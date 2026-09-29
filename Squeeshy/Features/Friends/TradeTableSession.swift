@@ -106,11 +106,89 @@ final class TradeTableSession: NSObject {
 
     var bothSidesFilled: Bool { !mine.isEmpty && !theirs.isEmpty }
 
+    /// Both said yes to this table: the swap is under way.
+    var isSwapping: Bool { myCurrentVote == true && theirCurrentVote == true }
+
+    // MARK: A "no"
+
+    /// Someone said no. It stays set while the table plays the rejection, then
+    /// the board is wiped and it clears. The view animates off its `id`.
+    struct Rejection: Equatable {
+        enum Reason: Equatable {
+            case me, partner
+            /// Something on this side left the collection before it could be sent.
+            case itemLeft
+        }
+
+        let id = UUID()
+        let reason: Reason
+
+        var byMe: Bool { reason == .me }
+    }
+
+    private(set) var rejection: Rejection? = nil
+    /// What each side held when the no landed. The wipe only clears a side that
+    /// still holds exactly that, so a squeeshy put in *during* the animation stays.
+    private var rejectedSides: (mine: Set<String>, theirs: Set<String>)? = nil
+
+    /// Long enough for the stamp, the shake and the sweep to play out.
+    static let wipeDelay: Duration = .seconds(1.7)
+
+    private func noticeRejection(_ reason: Rejection.Reason) {
+        // Only an open table can be rejected. A late or stale no after the trade
+        // was filed must not wipe what the celebration is showing.
+        guard case .atTable = phase, rejection == nil else { return }
+        let current = Rejection(reason: reason)
+        rejection = current
+        rejectedSides = (Set(mine.map(\.id)), Set(theirs.map(\.id)))
+        Task {
+            try? await Task.sleep(for: Self.wipeDelay)
+            guard rejection?.id == current.id else { return }
+            wipeAfterRejection()
+        }
+    }
+
+    /// Each device empties its own side and says so, so both boards end clean
+    /// whichever phone said no. The other side is cleared locally too, when it is
+    /// unchanged, so it doesn't flash back while the partner's update is in flight.
+    private func wipeAfterRejection() {
+        guard case .atTable = phase else {
+            rejectedSides = nil
+            rejection = nil
+            return
+        }
+        if let sides = rejectedSides {
+            if Set(mine.map(\.id)) == sides.mine {
+                mine = []
+                send(.table([]))
+            }
+            if Set(theirs.map(\.id)) == sides.theirs {
+                theirs = []
+            }
+        }
+        myVote = nil
+        theirVote = nil
+        // Anything a half-started exchange left behind goes too, so the same
+        // squeeshies put back later start a fresh exchange.
+        theirPayload = nil
+        theyReceivedKey = nil
+        sentPayloadKey = nil
+        rejectedSides = nil
+        rejection = nil
+    }
+
     /// `nil` = not voted on this table.
     var myCurrentVote: Bool? { myVote?.key == tableKey ? myVote?.yes : nil }
     var theirCurrentVote: Bool? { theirVote?.key == tableKey ? theirVote?.yes : nil }
 
     var statusLine: String {
+        if let rejection {
+            switch rejection.reason {
+            case .me: return "You said no · clearing the table"
+            case .partner: return "\(partnerName) said no · clearing the table"
+            case .itemLeft: return "One of yours left your collection · clearing the table"
+            }
+        }
         if mine.isEmpty { return "Put something on the table" }
         if theirs.isEmpty { return "Waiting for \(partnerName) to put one in" }
         if myCurrentVote == false || theirCurrentVote == false {
@@ -187,6 +265,8 @@ final class TradeTableSession: NSObject {
         theirPayload = nil
         theyReceivedKey = nil
         sentPayloadKey = nil
+        rejection = nil
+        rejectedSides = nil
     }
 
     // MARK: Connecting
@@ -218,9 +298,15 @@ final class TradeTableSession: NSObject {
 
     // MARK: The table
 
-    /// Adds or removes one of this user's specimens. Any change voids both votes
+    /// False while a swap is being exchanged or a no is playing out. Changing the
+    /// table mid-exchange could let one phone finish the trade while the other
+    /// doesn't, so it is locked until the outcome settles.
+    var canChangeTable: Bool { !isSwapping && rejection == nil }
+
+    /// Adds or removes one of this user's squeeshies. Any change voids both votes
     /// because the table key changes.
     func toggle(_ specimen: Squishy) {
+        guard canChangeTable else { return }
         let id = specimen.lineageID.uuidString
         if let index = mine.firstIndex(where: { $0.id == id }) {
             mine.remove(at: index)
@@ -232,15 +318,27 @@ final class TradeTableSession: NSObject {
         send(.table(mine))
     }
 
+    /// Takes one of this user's squeeshies off the table by ID — used from the
+    /// expanded view, which lists table items rather than collection rows.
+    func remove(itemID: String) {
+        guard canChangeTable, let index = mine.firstIndex(where: { $0.id == itemID }) else { return }
+        mine.remove(at: index)
+        send(.table(mine))
+    }
+
     func contains(_ specimen: Squishy) -> Bool {
         mine.contains { $0.id == specimen.lineageID.uuidString }
     }
 
     func vote(_ yes: Bool) {
-        guard bothSidesFilled else { return }
+        guard bothSidesFilled, rejection == nil, !isSwapping else { return }
         myVote = (tableKey, yes)
         send(.vote(key: tableKey, yes: yes))
-        advanceIfAgreed()
+        if yes {
+            advanceIfAgreed()
+        } else {
+            noticeRejection(.me)
+        }
     }
 
     private func advanceIfAgreed() {
@@ -249,8 +347,12 @@ final class TradeTableSession: NSObject {
               let modelContext else { return }
         let specimens = TradeLedger.held(mine.map(\.id), in: modelContext)
         guard specimens.count == mine.count else {
-            // Something on the table left the shelf in the meantime; start over.
-            vote(false)
+            // Something on the table left the collection in the meantime: say no
+            // on this side's behalf, which wipes the table for a fresh start.
+            // Not through `vote(_:)`, which refuses once both have said yes.
+            myVote = (key, false)
+            send(.vote(key: key, yes: false))
+            noticeRejection(.itemLeft)
             return
         }
         sentPayloadKey = key
@@ -306,7 +408,11 @@ final class TradeTableSession: NSObject {
             theirs = items
         case .vote(let key, let yes):
             theirVote = (key, yes)
-            advanceIfAgreed()
+            if !yes && key == tableKey {
+                noticeRejection(.partner)
+            } else {
+                advanceIfAgreed()
+            }
         case .payload(let key, let specimens):
             // Only accept exactly what was on their side of this table.
             let expected = Set(theirs.map(\.id))

@@ -308,6 +308,14 @@ Code: `Squeeshy/Features/Friends/`.
   puts squeeshies in and votes ✓ / ✗. Both ✓ on the same table trades instantly.
   Changing the table clears both votes, so a yes never carries over to a different
   squeeshy, and the swap is only filed once both phones hold each other's squeeshies.
+  Two yeses play a swap — each side's squeeshies lift and cross to the other seat —
+  and the celebration (stamp, confetti in the traded squeeshies' colours) waits for it
+  to land, however fast the phones finished. A no slams a NO TRADE stamp on the board,
+  shakes it, and sweeps it clean; each phone then empties its own side (unless its
+  owner already put something new in), so the table is ready for the next offer. The
+  table is locked from two yeses until the swap is filed, and during a no.
+  A seat with several squeeshies shows them as a cluster with a count; tap it to see
+  them all, and take your own off from there.
 
 A squeeshy you trade away leaves the collection the same way Delete removes it
 (shelves, cut-out, row), or loses one from `quantity` if you own more than one. The
