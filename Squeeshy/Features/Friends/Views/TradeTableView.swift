@@ -320,6 +320,7 @@ struct TradeTableView: View {
                           vote: session.myCurrentVote,
                           emptyText: "tap one of yours\nto put it in",
                           isWiped: wiped,
+                          hidesCaption: swapStep > 0,
                           swapOffset: swapOffset(for: .mine),
                           swapRotation: .degrees(swapStep == 1 ? 14 : 0),
                           swapScale: swapStep == 1 ? 1.12 : 1) {
@@ -340,6 +341,7 @@ struct TradeTableView: View {
                           vote: session.theirCurrentVote,
                           emptyText: "waiting for\n\(session.partnerName)",
                           isWiped: wiped,
+                          hidesCaption: swapStep > 0,
                           swapOffset: swapOffset(for: .theirs),
                           swapRotation: .degrees(swapStep == 1 ? -14 : 0),
                           swapScale: swapStep == 1 ? 1.12 : 1) {

@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Table Animations</title>
+<style>
+  /* Squeeshy's own look: near-black ground, Liquid Glass, tint pools sampled
+     from whatever is on screen. Timings match TradeTableView.swift. */
+  :root {
+    --ground: #0B0B0E;
+    --ink: #FFFFFF;
+    --ink2: rgba(255,255,255,.58);
+    --ink3: rgba(255,255,255,.30);
+    --hair: rgba(255,255,255,.16);
+    --page: #111116;
+    --pageInk: #F2F1F5;
+    --pageInk2: #A3A1AD;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--page); color: var(--pageInk);
+         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+         -webkit-font-smoothing: antialiased; }
+  .page { max-width: 1400px; margin: 0 auto; padding: 32px 16px 64px; }
+  .page h1 { font-size: 32px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; text-wrap: balance; }
+  .page > p { color: var(--pageInk2); font-size: 15px; line-height: 22px; max-width: 700px; }
+  .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; }
+  .rack { display: flex; flex-wrap: wrap; gap: 40px 32px; margin-top: 32px; align-items: flex-start; }
+  .slot { width: 393px; max-width: 100%; }
+  .slot .cap { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 12px; }
+  .slot .cap h2 { font-size: 17px; font-weight: 700; }
+  .slot .note { color: var(--pageInk2); font-size: 13px; line-height: 19px; margin-top: 14px; }
+  .replay { font: 600 13px/1 -apple-system, system-ui, sans-serif; color: var(--pageInk); background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.18); border-radius: 999px; padding: 9px 14px; cursor: pointer; white-space: nowrap; }
+  .replay:hover { background: rgba(255,255,255,.14); }
+  .replay:focus-visible, .seatcard:focus-visible, .x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+
+  /* ---------- device ---------- */
+  .fit { width: 100%; overflow: hidden; }
+  .device { width: 393px; height: 852px; border-radius: 52px; position: relative; overflow: hidden;
+            background: var(--ground); box-shadow: 0 0 0 10px #1C1C22, 0 30px 80px rgba(0,0,0,.5); margin: 10px;
+            color: var(--ink); }
+  .pools { position: absolute; inset: 0; pointer-events: none; transition: background 0.65s ease-in-out; }
+  .screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+  .safe { height: 54px; flex: none; }
+  .mx { padding: 0 20px; }
+  .glass { background: rgba(255,255,255,.075); border: 1px solid rgba(255,255,255,.13);
+           box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 8px 30px rgba(0,0,0,.25);
+           backdrop-filter: blur(22px) saturate(170%); -webkit-backdrop-filter: blur(22px) saturate(170%); }
+
+  .hdr { display: flex; align-items: center; gap: 12px; padding: 6px 20px 10px; }
+  .hdr .t { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .hdr .m { color: var(--ink2); margin-top: 2px; }
+  .hdr .leave { margin-left: auto; font-weight: 600; font-size: 15px; }
+
+  /* ---------- board ---------- */
+  .board { position: relative; display: flex; gap: 10px; align-items: flex-start; padding: 6px 20px 0; }
+  .seat { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; position: relative; }
+  .seatlabel { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+  .seatcard { position: relative; aspect-ratio: 1; border-radius: 24px; width: 100%; padding: 0; cursor: pointer; color: inherit; }
+  .seatcard.empty { background: none; border: 1.5px dashed var(--ink3); box-shadow: none; backdrop-filter: none; cursor: default; }
+  .seatcard .emptytext { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                         text-align: center; color: var(--ink3); }
+  .cluster { position: absolute; inset: 10px; display: flex; flex-direction: column; gap: 4px; will-change: transform; }
+  .cluster.one { inset: 14px; }
+  .cluster .row { flex: 1; display: flex; gap: 4px; min-height: 0; }
+  .cluster .pic { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; }
+  .cluster .pic svg { width: 100%; height: 100%; }
+  .cluster .more { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 14px;
+                   background: rgba(255,255,255,.08); font: 800 20px/1 ui-rounded, -apple-system, system-ui; }
+  .badge { position: absolute; top: 8px; right: 8px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px;
+           background: #fff; color: #0B0B0E; font: 700 11px/20px ui-rounded, -apple-system, system-ui; text-align: center; }
+  .seatname { text-align: center; font-weight: 600; font-size: 15px; min-height: 20px; line-height: 20px; }
+  .arrow { width: 20px; flex: none; margin-top: 94px; color: var(--ink3); text-align: center; font-size: 16px; transition: opacity .2s; }
+
+  .vote { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 8px; border-radius: 999px; color: var(--ink3); }
+  .vote svg { width: 14px; height: 14px; }
+  .vote.yes, .vote.no { color: var(--ink); }
+  .vote .w { font-family: ui-monospace, Menlo, monospace; font-size: 9px; font-weight: 600; letter-spacing: 1px; }
+
+  .status { text-align: center; color: var(--ink2); margin-top: 18px; min-height: 14px; transition: opacity .2s; }
+  .votes { display: flex; gap: 12px; padding: 13px 20px 0; }
+  .vbtn { flex: 1; height: 60px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px;
+          font-weight: 600; font-size: 16px; position: relative; color: var(--ink); transition: transform .25s cubic-bezier(.34,1.56,.64,1); }
+  .vbtn.ok { color: #0D0A14; border: 0; }
+  .vbtn.chosen { transform: scale(1.03); }
+  .vbtn.chosen::after { content: ""; position: absolute; inset: -5px; border-radius: 999px; border: 2px solid #fff; }
+  .vbtn.off { opacity: .35; }
+
+  .strip { margin-top: auto; padding: 0 20px 26px; }
+  .strip .tiles { display: flex; gap: 10px; margin-top: 8px; overflow: hidden; }
+  .tile { width: 96px; flex: none; border-radius: 20px; padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; }
+  .tile .p { width: 54px; height: 54px; }
+  .tile .n { font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 84px; }
+  .tile.on::before { content: ""; position: absolute; inset: 0; border-radius: 20px; background: var(--on, rgba(255,255,255,.2)); opacity: .35; }
+  .tile.on::after { content: "✓"; position: absolute; top: 6px; right: 8px; width: 17px; height: 17px; border-radius: 50%; background: #fff; color: #0B0B0E;
+                    font: 700 11px/17px -apple-system, system-ui; text-align: center; }
+  .tile.dim { opacity: .35; }
+
+  /* ---------- effects ---------- */
+  .glow { position: absolute; left: 50%; top: 30%; width: 180px; height: 180px; margin: -90px 0 0 -90px; border-radius: 50%;
+          filter: blur(10px); opacity: 0; transform: scale(.2); pointer-events: none; }
+  .stamp { position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%) rotate(-14deg) scale(2.2); opacity: 0;
+           padding: 14px 22px; border-radius: 16px; border: 2.5px solid #fff; text-align: center; pointer-events: none; z-index: 5; }
+  .stamp .big { font-family: ui-monospace, Menlo, monospace; font-size: 20px; font-weight: 700; letter-spacing: 4px; display: flex; align-items: center; gap: 8px; justify-content: center; }
+  .stamp .small { color: var(--ink2); margin-top: 4px; }
+  .sweep { position: absolute; top: 0; bottom: 0; width: 90px; left: -90px; pointer-events: none; z-index: 4;
+           background: linear-gradient(90deg, transparent, rgba(255,255,255,.55), rgba(255,255,255,.85), rgba(255,255,255,.55), transparent);
+           filter: blur(6px); transform: rotate(8deg); opacity: 0; }
+
+  /* ---------- celebration ---------- */
+  .celebrate { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; padding: 22px; opacity: 0; pointer-events: none; }
+  .celebrate.show { opacity: 1; pointer-events: auto; transition: opacity .5s ease; }
+  .celebrate canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .tstamp { margin-top: 170px; font-family: ui-monospace, Menlo, monospace; font-size: 18px; font-weight: 700; letter-spacing: 6px;
+            padding: 10px 18px; border: 2.5px solid #fff; border-radius: 10px; opacity: 0; transform: rotate(-18deg) scale(2.6); }
+  .got { display: flex; margin-top: 22px; }
+  .got .p { width: 128px; height: 128px; opacity: 0; transform: translateY(60px) scale(.2); }
+  .ctitle { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin-top: 16px; text-align: center; opacity: 0; }
+  .cbody { color: var(--ink2); font-size: 15px; line-height: 21px; text-align: center; margin-top: 12px; max-width: 330px; opacity: 0; }
+  .cbtns { margin-top: auto; width: 100%; display: flex; flex-direction: column; gap: 10px; opacity: 0; }
+  .cta { height: 52px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 16px; }
+  .cta.tint { color: #0D0A14; }
+
+  /* ---------- expanded seat ---------- */
+  .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
+  .scrim.show { opacity: 1; pointer-events: auto; }
+  .exp { position: absolute; left: 20px; right: 20px; top: 150px; border-radius: 30px; padding: 18px; z-index: 11;
+         opacity: 0; transform: scale(.7); transform-origin: left center; pointer-events: none;
+         transition: opacity .3s ease, transform .45s cubic-bezier(.34,1.56,.64,1); }
+  .exp.show { opacity: 1; transform: scale(1); pointer-events: auto; }
+  .exp .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .exp .top .t { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .exp .close { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 15px; }
+  .exp .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .etile { border-radius: 22px; padding: 12px 0; display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative;
+           transition: opacity .3s ease, transform .35s cubic-bezier(.34,1.56,.64,1); }
+  .etile .p { width: 84px; height: 84px; }
+  .etile .n { font-size: 13px; font-weight: 600; }
+  .etile .x { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; border-radius: 50%; border: 0; cursor: pointer;
+              background: #fff; color: #0B0B0E; font: 800 16px/26px -apple-system, system-ui; }
+  .etile.in { opacity: 0; transform: scale(.6); }
+  .etile.gone { opacity: 0; transform: scale(.4); }
+  .tapme { position: absolute; left: 50%; bottom: -30px; transform: translateX(-50%); white-space: nowrap; color: var(--ink2); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .exp, .etile, .vbtn { transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="mono" style="color:var(--pageInk2);margin-bottom:12px">Squeeshy · trade table · motion</div>
+  <h1>Trade table animations</h1>
+  <p>Three moments from the trade table, played with the same timings as the Swift code.
+     Press <b>Replay</b> to watch again. In the third one, tap your side of the table to open it.
+     The squeeshies are illustrations; the app uses real cut-outs.</p>
+
+  <div class="rack">
+    <div class="slot">
+      <div class="cap"><h2>Both say yes</h2><button class="replay" data-replay="yes">Replay</button></div>
+      <div class="fit"><div class="device" id="dYes"></div></div>
+      <p class="note">Mia's yes lands. Each side lifts, crosses in an arc through a glow of the table's colours, and settles on the other seat. Then the stamp slams down, confetti in the traded squeeshies' colours, and what you got bounces in.</p>
+    </div>
+    <div class="slot">
+      <div class="cap"><h2>Someone says no</h2><button class="replay" data-replay="no">Replay</button></div>
+      <div class="fit"><div class="device" id="dNo"></div></div>
+      <p class="note">Mia says no. The stamp slams onto the board, it shakes, and a sweep wipes it clean. Both sides empty and the votes reset, so you can put in something new.</p>
+    </div>
+    <div class="slot">
+      <div class="cap"><h2>More than one squeeshy</h2><button class="replay" data-replay="many">Reset</button></div>
+      <div class="fit"><div class="device" id="dMany"></div></div>
+      <p class="note">Five on your side: three show, plus a "+2" tile and a count. Tap the seat and it opens to show all of them; the minus takes one off the table.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  /* ---------- sample squishies ----------
+     Each is drawn as a studio photograph: lightbox backdrop, soft contact
+     shadow, shaded foam body, specular gloss. The toys are cute because
+     real squishies are; the chrome around them stays plain (SPEC §7). */
+  function S(id, name, kind, squish, w, h, c, extra) {
+    var o = { id: id, name: name, kind: kind, squish: squish, w: w, h: h, c: c,
+              pal: [c.b, c.l, c.d, c.a || c.l] };
+    for (var k in (extra || {})) o[k] = extra[k];
+    return o;
+  }
+  var MINE = [
+    S("m1", "Strawberry Mochi", "strawberry", 6, 62, 58, { b: "#E8475A", l: "#FF8A92", d: "#A3202F", a: "#5DAA4A" }),
+    S("m2", "Panda Bun",        "panda",      8, 74, 66, { b: "#F4F2EE", l: "#FFFFFF", d: "#C9C4BA", a: "#26242A" }),
+    S("m3", "Butter Toast",     "toast",      4, 88, 92, { b: "#F2D39A", l: "#FBE9C4", d: "#B9793A", a: "#F6D44A" }),
+    S("m4", "Peach Bum",        "peach",      9, 66, 60, { b: "#FFB38F", l: "#FFD7C0", d: "#E0735E", a: "#6BAE52" }),
+    S("m5", "Sprinkle Donut",   "donut",      5, 80, 76, { b: "#E9B57A", l: "#F6D2A2", d: "#B67B41", a: "#F48FB5" }),
+    S("m6", "Bunny Loaf",       "bunny",      7, 58, 84, { b: "#F7E6DA", l: "#FFFFFF", d: "#D8B9A6", a: "#F4A6B4" })
+  ];
+  var FRIENDS = {
+    zoe: { name: "Zoe", ago: "2 h ago", items: [
+      S("z1", "Mochi Cat",        "cat",      8, 64, 60, { b: "#F3E6CF", l: "#FFF8EC", d: "#C9AE84", a: "#F2A7A0" }),
+      S("z2", "Avocado Pal",      "avocado",  5, 70, 86, { b: "#4F7A2E", l: "#D9E88A", d: "#2F4C1A", a: "#8A5A36" }, { keep: true }),
+      S("z3", "Lemon Seal",       "seal",     7, 92, 50, { b: "#F5D949", l: "#FFF0A0", d: "#C9A616", a: "#2A2528" }),
+      S("z4", "Sky Whale",        "whale",    9, 96, 58, { b: "#7FB6E6", l: "#C5E2FA", d: "#3F79AE", a: "#EAF4FC" }),
+      S("z5", "Frog Bun",         "frog",     4, 84, 62, { b: "#7DC258", l: "#B9E596", d: "#3F7F29", a: "#FFFFFF" }),
+      S("z6", "Cream Cupcake",    "cupcake",  6, 64, 80, { b: "#FBE3EC", l: "#FFFFFF", d: "#E3A2BA", a: "#8FC7E8" }, { keep: true }),
+      S("z7", "Cloud Puff",       "cloud",   10, 90, 58, { b: "#EEF3FA", l: "#FFFFFF", d: "#B9C8DC", a: "#F7B6C4" }),
+      S("z8", "Caramel Pudding",  "pudding",  5, 68, 70, { b: "#F6D57A", l: "#FFEBB0", d: "#C99A2E", a: "#8A4B1C" }, { keep: true })
+    ]},
+    maya: { name: "Maya", ago: "Yesterday", items: [
+      S("y1", "Blue Whale",       "whale",    9, 90, 54, { b: "#5E8FD6", l: "#A9C8F2", d: "#2F5A9E", a: "#E6EFFB" }),
+      S("y2", "Honey Toast",      "toast",    6, 94, 96, { b: "#EFC27A", l: "#F9DDA8", d: "#A6632A", a: "#E89A2B" }),
+      S("y3", "Grape Cat",        "cat",      8, 60, 58, { b: "#A98BD6", l: "#D4C4F0", d: "#6A4F9E", a: "#F2A7C0" }, { keep: true }),
+      S("y4", "Matcha Frog",      "frog",     7, 82, 60, { b: "#A6BF6A", l: "#D2E3A4", d: "#62783A", a: "#FFFFFF" }),
+      S("y5", "Blush Bunny",      "bunny",    5, 56, 82, { b: "#F6C9CF", l: "#FFE8EB", d: "#D9929C", a: "#F08A9C" })
+    ]},
+    ren: { name: "Ren", ago: "4 days ago", items: [
+      S("r1", "Choco Donut",      "donut",    3, 78, 74, { b: "#D9A56B", l: "#F0C997", d: "#9C6A36", a: "#6B3F24" }),
+      S("r2", "Custard Bao",      "bun",      7, 72, 58, { b: "#FBF3E4", l: "#FFFFFF", d: "#D8C7A6", a: "#F2B6A0" }),
+      S("r3", "Mango Seal",       "seal",     4, 94, 52, { b: "#FFB547", l: "#FFD892", d: "#D97E12", a: "#2A2528" }, { keep: true })
+    ]}
+  };
+  var PRESETS = ["I have a double!", "Swap at school?", "I can post it"];
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+
+  var UID = 0;
+  var EYE = "#2A2226";
+  function rg(id, c) {
+    return '<radialGradient id="' + id + '" cx="36%" cy="30%" r="78%">' +
+      '<stop offset="0" stop-color="' + c.l + '"/><stop offset=".55" stop-color="' + c.b + '"/>' +
+      '<stop offset="1" stop-color="' + c.d + '"/></radialGradient>';
+  }
+  function face(u, x, y, k, opts) {
+    opts = opts || {};
+    var e = 16 * k, r = 4.6 * k;
+    var eyes = [-e, e].map(function (dx) {
+      return '<ellipse cx="' + (x + dx) + '" cy="' + y + '" rx="' + r + '" ry="' + (r * 1.15) + '" fill="' + (opts.eye || EYE) + '"/>' +
+             '<circle cx="' + (x + dx - r * .35) + '" cy="' + (y - r * .45) + '" r="' + (r * .38) + '" fill="#fff"/>';
+    }).join("");
+    var m = 'M' + (x - 5 * k) + ' ' + (y + 6 * k) + ' q' + (2.5 * k) + ' ' + (3 * k) + ' ' + (5 * k) + ' 0 q' + (2.5 * k) + ' ' + (3 * k) + ' ' + (5 * k) + ' 0';
+    var blush = opts.noBlush ? '' : [-1, 1].map(function (s) {
+      return '<ellipse cx="' + (x + s * 27 * k) + '" cy="' + (y + 7 * k) + '" rx="' + (7 * k) + '" ry="' + (4 * k) + '" fill="#FF7F8E" opacity=".42" filter="url(#' + u + 'b1)"/>';
+    }).join("");
+    return blush + eyes + '<path d="' + m + '" stroke="' + (opts.eye || EYE) + '" stroke-width="' + (1.7 * k) + '" fill="none" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  function gloss(u, x, y, rx, ry, rot, op) {
+    return '<ellipse cx="' + x + '" cy="' + y + '" rx="' + rx + '" ry="' + ry + '" transform="rotate(' + (rot || 0) + ' ' + x + ' ' + y + ')" fill="#fff" opacity="' + (op || .55) + '" filter="url(#' + u + 'b3)"/>';
+  }
+  function rim(u, d) {   // soft inner edge so foam reads as rounded, not flat
+    return '<path d="' + d + '" fill="none" stroke="#000" stroke-opacity=".10" stroke-width="6" filter="url(#' + u + 'b3)" clip-path="url(#' + u + 'clip)"/>' +
+           '<clipPath id="' + u + 'clip"><path d="' + d + '"/></clipPath>';
+  }
+  function body(u, d) { return '<path d="' + d + '" fill="url(#' + u + 'g)"/>' + rim(u, d); }
+
+  var KINDS = {
+    cat: function (u, c) {
+      var d = "M40 150C34 112 42 76 62 62L58 30 86 50C95 47 105 47 114 50L142 30 138 62C158 76 166 112 160 150 158 162 142 166 100 166S42 162 40 150Z";
+      return body(u, d) +
+        '<path d="M64 38 82 52 68 60Z" fill="' + c.a + '" opacity=".55"/><path d="M136 38 118 52 132 60Z" fill="' + c.a + '" opacity=".55"/>' +
+        gloss(u, 72, 82, 18, 9, -25) + face(u, 100, 108, 1.1) +
+        '<path d="M60 112h-16M60 118l-14 4M140 112h16M140 118l14 4" stroke="' + c.d + '" stroke-width="1.4" stroke-linecap="round" opacity=".7"/>';
+    },
+    bun: function (u, c) {
+      var d = "M34 150C34 98 62 62 100 62S166 98 166 150C166 162 142 167 100 167S34 162 34 150Z";
+      var pleats = [-34, -18, 0, 18, 34].map(function (dx) {
+        return '<path d="M100 66Q' + (100 + dx * .6) + ' 74 ' + (100 + dx) + ' 84" stroke="' + c.d + '" stroke-width="2.4" fill="none" stroke-linecap="round" opacity=".55"/>';
+      }).join("");
+      return body(u, d) + pleats + '<circle cx="100" cy="66" r="5" fill="' + c.d + '" opacity=".5"/>' +
+        gloss(u, 68, 96, 16, 9, -30) + face(u, 100, 122, 1);
+    },
+    strawberry: function (u, c) {
+      var d = "M100 166C68 152 38 122 40 92 42 64 70 56 100 66 130 56 158 64 160 92 162 122 132 152 100 166Z";
+      var seeds = "";
+      [[64,94],[84,86],[116,86],[136,94],[58,118],[142,118],[74,140],[126,140],[100,150],[88,112],[112,112]].forEach(function (p) {
+        seeds += '<ellipse cx="' + p[0] + '" cy="' + p[1] + '" rx="2.2" ry="3.4" fill="#FCE58A" opacity=".95"/>';
+      });
+      var leaf = '<path d="M100 72C88 60 70 62 62 70 76 70 84 74 90 78 78 82 72 92 74 100 84 90 94 84 100 82 106 84 116 90 126 100 128 92 122 82 110 78 116 74 124 70 138 70 130 62 112 60 100 72Z" fill="' + c.a + '"/>' +
+                 '<path d="M100 72V56" stroke="#3E7A30" stroke-width="4" stroke-linecap="round"/>';
+      return body(u, d) + seeds + leaf + gloss(u, 66, 100, 12, 7, -40) + face(u, 100, 116, .95);
+    },
+    toast: function (u, c) {
+      var outer = "M44 160V88C28 82 28 50 58 42 72 28 128 28 142 42 172 50 172 82 156 88V160C156 164 152 167 148 167H52C48 167 44 164 44 160Z";
+      var inner = "M55 156V83C43 77 43 57 62 52 76 40 124 40 138 52 157 57 157 77 145 83V156Z";
+      return '<path d="' + outer + '" fill="' + c.d + '"/>' + rim(u, outer) +
+        '<path d="' + inner + '" fill="url(#' + u + 'g)"/>' +
+        '<rect x="80" y="62" width="40" height="30" rx="7" transform="rotate(-8 100 77)" fill="' + c.a + '"/>' +
+        '<rect x="84" y="64" width="18" height="8" rx="4" transform="rotate(-8 100 77)" fill="#fff" opacity=".5"/>' +
+        gloss(u, 72, 110, 10, 16, 0, .35) + face(u, 100, 124, 1);
+    },
+    peach: function (u, c) {
+      var d = "M100 165C58 165 38 136 40 106 42 76 66 58 92 64 96 65 98 67 100 69 102 67 104 65 108 64 134 58 158 76 160 106 162 136 142 165 100 165Z";
+      return body(u, d) +
+        '<path d="M100 72C92 98 94 130 100 158" stroke="' + c.d + '" stroke-width="4" fill="none" opacity=".35" filter="url(#' + u + 'b1)"/>' +
+        '<path d="M102 66C110 48 132 44 146 50 136 62 118 68 102 66Z" fill="' + c.a + '"/>' +
+        '<path d="M104 64C116 58 128 54 140 52" stroke="#3E7A30" stroke-width="1.4" fill="none" opacity=".6"/>' +
+        gloss(u, 66, 94, 14, 9, -35) + face(u, 100, 122, .9);
+    },
+    panda: function (u, c) {
+      var d = "M38 128C38 92 64 66 100 66S162 92 162 128 140 167 100 167 38 164 38 128Z";
+      return '<circle cx="56" cy="74" r="17" fill="' + c.a + '"/><circle cx="144" cy="74" r="17" fill="' + c.a + '"/>' + body(u, d) +
+        '<ellipse cx="80" cy="112" rx="13" ry="16" transform="rotate(20 80 112)" fill="' + c.a + '"/>' +
+        '<ellipse cx="120" cy="112" rx="13" ry="16" transform="rotate(-20 120 112)" fill="' + c.a + '"/>' +
+        '<circle cx="81" cy="112" r="4.5" fill="#fff"/><circle cx="119" cy="112" r="4.5" fill="#fff"/>' +
+        '<ellipse cx="100" cy="128" rx="6" ry="4" fill="' + c.a + '"/>' +
+        '<path d="M95 135q2.5 3 5 0q2.5 3 5 0" stroke="' + c.a + '" stroke-width="1.7" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="66" cy="136" rx="8" ry="4.5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/><ellipse cx="134" cy="136" rx="8" ry="4.5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/>' +
+        gloss(u, 70, 88, 16, 8, -30);
+    },
+    donut: function (u, c) {
+      var d = "M100 50A62 58 0 1 1 99.9 50Z";
+      var icing = "M44 104C44 76 70 56 100 56S156 76 156 104C156 114 150 118 146 112 142 124 134 126 132 116 126 130 116 128 116 118 108 132 94 130 92 118 84 128 74 126 72 114 64 124 54 120 56 110 50 118 44 114 44 104Z";
+      var cols = ["#FFFFFF", "#7FC8F0", "#FFD84A", "#8BD17C", "#B99AF0"];
+      var spr = "";
+      [[64,86,20],[78,70,-30],[122,68,40],[140,90,-10],[70,104,60],[132,108,-50],[92,64,10],[112,98,80],[86,98,-60],[146,76,30]].forEach(function (p, i) {
+        spr += '<rect x="' + (p[0] - 5) + '" y="' + (p[1] - 1.6) + '" width="10" height="3.2" rx="1.6" fill="' + cols[i % cols.length] + '" transform="rotate(' + p[2] + ' ' + p[0] + ' ' + p[1] + ')"/>';
+      });
+      return body(u, d) +
+        '<path d="' + icing + '" fill="' + c.a + '"/>' + gloss(u, 72, 74, 16, 7, -25, .5) + spr +
+        '<ellipse cx="100" cy="92" rx="18" ry="12" fill="' + c.d + '"/><ellipse cx="100" cy="94" rx="15" ry="9" fill="#EDEAE3"/>' +
+        face(u, 100, 138, .85);
+    },
+    avocado: function (u, c) {
+      var outer = "M100 36C124 36 132 60 140 84 154 118 152 167 100 167S46 118 60 84C68 60 76 36 100 36Z";
+      var inner = "M100 46C118 46 125 66 132 88 144 118 142 158 100 158S56 118 68 88C75 66 82 46 100 46Z";
+      return '<path d="' + outer + '" fill="' + c.b + '"/>' + rim(u, outer) +
+        '<path d="' + inner + '" fill="url(#' + u + 'g)"/>' +
+        '<circle cx="100" cy="126" r="22" fill="' + c.a + '"/>' + gloss(u, 92, 118, 7, 5, -30, .5) +
+        face(u, 100, 86, .72) + gloss(u, 84, 64, 6, 12, -15, .4);
+    },
+    frog: function (u, c) {
+      var d = "M28 152C28 110 60 84 100 84S172 110 172 152C172 162 150 167 100 167S28 162 28 152Z";
+      var bumps = '<circle cx="66" cy="86" r="21" fill="url(#' + u + 'g)"/><circle cx="134" cy="86" r="21" fill="url(#' + u + 'g)"/>';
+      var eyes = [66, 134].map(function (x) {
+        return '<circle cx="' + x + '" cy="84" r="12" fill="#fff"/><circle cx="' + x + '" cy="86" r="7" fill="' + EYE + '"/><circle cx="' + (x - 2.5) + '" cy="83" r="2.4" fill="#fff"/>';
+      }).join("");
+      return bumps + body(u, d) + eyes +
+        '<path d="M76 126Q100 142 124 126" stroke="' + EYE + '" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        '<ellipse cx="58" cy="128" rx="9" ry="5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/><ellipse cx="142" cy="128" rx="9" ry="5" fill="#FF7F8E" opacity=".4" filter="url(#' + u + 'b1)"/>' +
+        '<ellipse cx="100" cy="152" rx="40" ry="10" fill="' + c.l + '" opacity=".6"/>' + gloss(u, 60, 76, 7, 4, -30, .6);
+    },
+    bunny: function (u, c) {
+      var d = "M44 128C44 100 68 82 100 82S156 100 156 128 138 167 100 167 44 156 44 128Z";
+      var ears = [[78, -10], [122, 10]].map(function (p) {
+        return '<ellipse cx="' + p[0] + '" cy="56" rx="14" ry="36" transform="rotate(' + p[1] + ' ' + p[0] + ' 86)" fill="url(#' + u + 'g)"/>' +
+               '<ellipse cx="' + p[0] + '" cy="58" rx="6" ry="24" transform="rotate(' + p[1] + ' ' + p[0] + ' 86)" fill="' + c.a + '" opacity=".6"/>';
+      }).join("");
+      return ears + body(u, d) + gloss(u, 72, 104, 14, 8, -30) + face(u, 100, 124, 1);
+    },
+    cloud: function (u, c) {
+      var d = "M44 156C22 156 18 126 40 118 34 94 62 80 80 94 86 66 128 62 134 90 154 80 178 98 166 120 186 128 180 156 160 156Z";
+      return body(u, d) + gloss(u, 92, 84, 16, 8, -15, .7) + face(u, 100, 128, 1, { eye: "#3A3F55" }) +
+        '<path d="M150 70v10M145 75h10" stroke="' + c.d + '" stroke-width="2" stroke-linecap="round"/><path d="M40 84v7M36.5 87.5h7" stroke="' + c.d + '" stroke-width="1.6" stroke-linecap="round"/>';
+    },
+    whale: function (u, c) {
+      var d = "M26 132C26 96 62 76 102 78 138 80 158 100 160 122L176 104C184 98 192 106 188 114L172 140C182 150 176 162 166 156L156 150C146 162 124 167 100 167 54 167 26 158 26 132Z";
+      return body(u, d) +
+        '<path d="M30 140C44 158 80 164 110 162 132 160 146 154 152 148 130 150 60 152 30 140Z" fill="' + c.a + '" opacity=".75"/>' +
+        '<path d="M84 72C80 60 72 56 66 58M84 72C88 58 96 54 102 56M84 72V56" stroke="' + c.d + '" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".7"/>' +
+        gloss(u, 64, 98, 20, 8, -20) + face(u, 76, 122, .9);
+    },
+    cupcake: function (u, c) {
+      var wrap = "M56 116H144L132 166H68Z";
+      var lines = [70, 84, 100, 116, 130].map(function (x) {
+        return '<path d="M' + x + ' 118L' + (100 + (x - 100) * .78) + ' 164" stroke="#000" stroke-opacity=".12" stroke-width="3"/>';
+      }).join("");
+      var d = "M48 122C36 108 50 92 64 96 60 76 86 70 96 80 102 62 132 66 128 88 146 86 160 106 150 122 140 130 60 132 48 122Z";
+      return '<path d="' + wrap + '" fill="' + c.a + '"/>' + lines + body(u, d) +
+        '<circle cx="106" cy="66" r="10" fill="#E53950"/><circle cx="103" cy="63" r="3" fill="#fff" opacity=".6"/>' +
+        '<path d="M108 56Q112 46 120 44" stroke="#4E7A2E" stroke-width="2" fill="none" stroke-linecap="round"/>' +
+        gloss(u, 76, 96, 12, 6, -25, .7) + face(u, 100, 142, .8, { eye: "#2A2226" });
+    },
+    pudding: function (u, c) {
+      var d = "M52 164C47 164 45 160 47 154L64 88C66 80 72 76 80 76H120C128 76 134 80 136 88L153 154C155 160 153 164 148 164Z";
+      var top = "M64 90C66 80 72 76 80 76H120C128 76 134 80 136 88L138 96C134 104 130 100 128 94 126 106 118 106 116 96 112 104 104 104 104 96 98 108 88 104 88 96 84 104 74 104 74 96 70 102 64 100 64 90Z";
+      return body(u, d) + '<path d="' + top + '" fill="' + c.a + '"/>' + gloss(u, 86, 82, 12, 3, 0, .5) +
+        gloss(u, 70, 126, 5, 18, 12, .45) + face(u, 100, 128, .95) +
+        '<ellipse cx="100" cy="166" rx="62" ry="5" fill="#fff" opacity=".6"/>';
+    },
+    seal: function (u, c) {
+      var d = "M24 150C20 118 50 94 90 94 130 94 152 110 162 128L180 120C188 116 192 128 184 134L168 148C164 162 140 167 100 167 50 167 26 162 24 150Z";
+      return body(u, d) +
+        '<path d="M92 150C104 144 118 146 124 156" stroke="' + c.d + '" stroke-width="3" fill="none" stroke-linecap="round" opacity=".5"/>' +
+        gloss(u, 64, 110, 18, 7, -18) + face(u, 66, 126, .85, { noBlush: false }) +
+        '<ellipse cx="66" cy="136" rx="4" ry="3" fill="' + c.a + '"/>' +
+        '<path d="M50 134h-14M50 138l-12 4M82 134h14M82 138l12 4" stroke="' + c.d + '" stroke-width="1.2" stroke-linecap="round" opacity=".7"/>';
+    }
+  };
+
+  function photo(s) {
+    var u = "q" + (UID++);
+    return '<svg viewBox="0 0 200 200" width="100%" height="100%" aria-hidden="true" style="display:block">' +
+      '<defs>' + rg(u + "g", s.c) +
+      '<radialGradient id="' + u + 'bg" cx="50%" cy="38%" r="80%"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#ECEAE4"/></radialGradient>' +
+      '<filter id="' + u + 'b6" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>' +
+      '<filter id="' + u + 'b3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>' +
+      '<filter id="' + u + 'b1" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>' +
+      '</defs>' +
+      '<ellipse cx="100" cy="169" rx="56" ry="7" fill="#000" opacity=".35" filter="url(#' + u + 'b6)"/>' +
+      KINDS[s.kind](u, s.c) + '</svg>';
+  }
+  function palHTML(s) { return '<span class="pal">' + s.pal.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + '</span>'; }
+  function mono4(f) {
+    var cs = f.items.slice(0, 4).map(function (s) { return s.pal[0]; });
+    return '<span class="mono4" aria-hidden="true">' + cs.map(function (c) { return '<i style="background:' + c + '"></i>'; }).join("") + '</span>';
+  }
+
+
+  var ALL = MINE.concat(FRIENDS.zoe.items, FRIENDS.maya.items, FRIENDS.ren.items);
+  function by(id) { return ALL.filter(function (s) { return s.id === id; })[0]; }
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, reduce ? Math.min(ms, 60) : ms); }); }
+
+  // Tint, as Tint.sampled: pastel pools of the table's own hues.
+  function hueOf(hex) {
+    var r = parseInt(hex.substr(1, 2), 16) / 255, g = parseInt(hex.substr(3, 2), 16) / 255, b = parseInt(hex.substr(5, 2), 16) / 255;
+    var mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn, h = 0;
+    if (d === 0) return 0;
+    if (mx === r) h = ((g - b) / d) % 6; else if (mx === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+    h *= 60; return h < 0 ? h + 360 : h;
+  }
+  function pastel(h, a) { return "hsla(" + h + ",100%,80%," + a + ")"; }
+  function pools(items) {
+    var hs = items.map(function (s) { return hueOf(s.c.b); });
+    var p = hs[0] || 330, q = hs[1] !== undefined ? hs[1] : p + 26;
+    return "radial-gradient(420px 420px at 16% 2%, " + pastel(p, .18) + ", transparent 70%)," +
+           "radial-gradient(380px 380px at 95% 26%, " + pastel(q, .14) + ", transparent 70%)," +
+           "radial-gradient(460px 460px at 50% 104%, " + pastel(p, .12) + ", transparent 70%)";
+  }
+  function gradient(items) {
+    var hs = items.map(function (s) { return hueOf(s.c.b); });
+    var p = hs[0] || 330, q = hs[1] !== undefined ? hs[1] : p + 26;
+    return "linear-gradient(90deg, hsl(" + p + ",100%,80%), hsl(" + q + ",100%,80%))";
+  }
+
+  var ICON = {
+    yes: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7.5" fill="currentColor"/><path d="M4.6 8.3l2.2 2.2 4.6-5" stroke="#0B0B0E" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    no: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.8" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+    think: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.8" stroke="currentColor" stroke-width="1.5" fill="none" stroke-dasharray="2.4 2"/></svg>'
+  };
+  function voteHTML(v) {
+    var cls = v === true ? "yes" : v === false ? "no" : "", icon = v === true ? ICON.yes : v === false ? ICON.no : ICON.think;
+    return '<span class="vote glass ' + cls + '">' + icon + '<span class="w">' + (v === true ? "YES" : v === false ? "NO" : "THINKING") + '</span></span>';
+  }
+
+  function clusterHTML(items) {
+    if (!items.length) return "";
+    function pic(s) { return '<div class="pic">' + photo(s) + '</div>'; }
+    var rows;
+    if (items.length === 1) rows = ['<div class="row">' + pic(items[0]) + '</div>'];
+    else if (items.length === 2) rows = ['<div class="row">' + pic(items[0]) + pic(items[1]) + '</div>'];
+    else if (items.length === 3) rows = ['<div class="row">' + pic(items[0]) + pic(items[1]) + '</div>', '<div class="row">' + pic(items[2]) + '</div>'];
+    else rows = ['<div class="row">' + pic(items[0]) + pic(items[1]) + '</div>',
+                 '<div class="row">' + pic(items[2]) + (items.length === 4 ? pic(items[3]) : '<div class="more">+' + (items.length - 3) + '</div>') + '</div>'];
+    return '<div class="cluster' + (items.length === 1 ? ' one' : '') + '">' + rows.join("") + '</div>';
+  }
+  function seatHTML(side, label, items, vote, empty) {
+    var card = items.length
+      ? '<button class="seatcard glass" data-seat="' + side + '" aria-label="' + label + ': ' + items.map(function (s) { return s.name; }).join(", ") + '">' +
+          clusterHTML(items) + (items.length > 1 ? '<span class="badge">' + items.length + '</span>' : '') + '</button>'
+      : '<div class="seatcard empty"><div class="emptytext mono">' + empty + '</div></div>';
+    var name = items.length === 0 ? "" : items.length === 1 ? items[0].name : '<span class="mono" style="color:var(--ink2)">' + items.length + ' squeeshies</span>';
+    return '<div class="seat" data-side="' + side + '"><div class="seatlabel"><span class="mono">' + label + '</span>' + voteHTML(vote) + '</div>' +
+           card + '<div class="seatname">' + name + '</div></div>';
+  }
+
+  function render(dev, st) {
+    var tableItems = st.mine.concat(st.theirs);
+    var filled = st.mine.length && st.theirs.length;
+    var locked = st.locked;
+    dev.innerHTML =
+      '<div class="pools"></div>' +
+      '<div class="screen">' +
+        '<div class="safe"></div>' +
+        '<div class="hdr"><div><div class="t">Trade table</div><div class="m mono">with Mia · nearby</div></div><div class="leave">Leave</div></div>' +
+        '<div class="board">' +
+          seatHTML("mine", "you", st.mine, st.myVote, "tap one of yours<br>to put it in") +
+          '<div class="arrow">⇄</div>' +
+          seatHTML("theirs", "Mia", st.theirs, st.theirVote, "waiting for<br>Mia") +
+          '<div class="glow" style="background:radial-gradient(circle, ' + pastel(hueOf((tableItems[0] || MINE[0]).c.b), .9) + ', ' + pastel(hueOf((tableItems[1] || MINE[0]).c.b), .4) + ', transparent 70%)"></div>' +
+          '<div class="sweep"></div>' +
+        '</div>' +
+        '<div class="status mono">' + st.status + '</div>' +
+        '<div class="votes">' +
+          '<div class="vbtn glass' + (st.myVote === false ? ' chosen' : '') + (filled && !locked ? '' : ' off') + '">✕ No trade</div>' +
+          '<div class="vbtn ok' + (st.myVote === true ? ' chosen' : '') + (filled && !locked ? '' : ' off') + '" style="background:' + gradient(tableItems.length ? tableItems : MINE) + '">✓ Trade</div>' +
+        '</div>' +
+        '<div class="strip"><div class="mono" style="color:var(--ink2)">your squeeshies</div><div class="tiles">' +
+          MINE.slice(0, 4).map(function (s) {
+            var on = st.mine.indexOf(s) >= 0;
+            return '<div class="tile glass' + (on ? ' on' : '') + (locked ? ' dim' : '') + '" style="--on:' + s.c.b + '"><div class="p">' + photo(s) + '</div><div class="n">' + s.name + '</div></div>';
+          }).join("") +
+        '</div></div>' +
+      '</div>';
+    dev.querySelector(".pools").style.background = pools(tableItems.length ? tableItems : MINE);
+  }
+
+  // ---------- 1. Both say yes ----------
+  var yesRun = 0;
+  async function playYes() {
+    var run = ++yesRun, dev = document.getElementById("dYes");
+    var give = by("m1"), get = by("y1");
+    var st = { mine: [give], theirs: [get], myVote: true, theirVote: null, status: "Waiting for Mia to vote", locked: false };
+    render(dev, st);
+    await wait(1100); if (run !== yesRun) return;
+    st.theirVote = true; st.status = "Both said yes · swapping"; st.locked = true;
+    render(dev, st);
+    await wait(250); if (run !== yesRun) return;
+
+    var seats = dev.querySelectorAll(".seat"), a = seats[0].querySelector(".cluster"), b = seats[1].querySelector(".cluster");
+    var travel = seats[1].getBoundingClientRect().left - seats[0].getBoundingClientRect().left;
+    var scale = dev.getBoundingClientRect().width / 393; travel = travel / scale;
+    seats[0].style.zIndex = 2; seats[1].style.zIndex = 1;
+    dev.querySelector(".arrow").style.opacity = 0;
+    // Names stay with their seats, so they fade while the squeeshies cross.
+    dev.querySelectorAll(".seatname").forEach(function (n) {
+      n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, fill: "forwards" });
+    });
+    var glow = dev.querySelector(".glow");
+    var spring1 = "cubic-bezier(.34,1.45,.64,1)", spring2 = "cubic-bezier(.3,1.6,.55,1)";
+    if (!reduce) {
+      a.animate([{ transform: "none" }, { transform: "translate(" + travel / 2 + "px,-44px) rotate(14deg) scale(1.12)" }, { transform: "translate(" + travel + "px,0) rotate(0) scale(1)" }],
+                { duration: 950, easing: "linear", fill: "forwards", composite: "replace" });
+      b.animate([{ transform: "none" }, { transform: "translate(" + (-travel / 2) + "px,44px) rotate(-14deg) scale(1.12)" }, { transform: "translate(" + (-travel) + "px,0) rotate(0) scale(1)" }],
+                { duration: 950, easing: "linear", fill: "forwards" });
+      a.animate([{ offset: 0, easing: spring1 }, { offset: .47, easing: spring2 }, { offset: 1 }], { duration: 950 });
+      glow.animate([{ opacity: 0, transform: "scale(.2)" }, { opacity: 1, transform: "scale(1.5)", offset: .45 }, { opacity: 0, transform: "scale(1.7)" }],
+                   { duration: 1100, easing: "ease-out", fill: "forwards" });
+    }
+    await wait(1250); if (run !== yesRun) return;
+    celebrate(dev, [get], [give], run);
+  }
+
+  function celebrate(dev, got, gave, run) {
+    var c = document.createElement("div");
+    c.className = "celebrate";
+    var all = got.concat(gave);
+    c.innerHTML = '<canvas></canvas><div class="tstamp">TRADED</div>' +
+      '<div class="got">' + got.map(function (s) { return '<div class="p">' + photo(s) + '</div>'; }).join("") + '</div>' +
+      '<div class="ctitle">' + got.map(function (s) { return s.name; }).join(" and ") + ' is yours</div>' +
+      '<div class="cbody">Swap the real squeeshies now. What you got is in your collection, and what you gave is under Trades → Traded away.</div>' +
+      '<div class="cbtns"><div class="cta tint" style="background:' + gradient(all) + '">Done</div><div class="cta glass">Trade again</div></div>';
+    var screen = dev.querySelector(".screen");
+    screen.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: "forwards" });
+    dev.appendChild(c);
+    requestAnimationFrame(function () { c.classList.add("show"); });
+    var stamp = c.querySelector(".tstamp");
+    stamp.animate([{ opacity: 0, transform: "rotate(-18deg) scale(2.6)" }, { opacity: 1, transform: "rotate(-3deg) scale(.92)", offset: .6 }, { opacity: 1, transform: "rotate(-5deg) scale(1)" }],
+                  { duration: 520, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards", delay: 120 });
+    c.querySelectorAll(".got .p").forEach(function (p, i) {
+      p.style.filter = "drop-shadow(0 14px 22px " + got[i].c.b + "88)";
+      p.animate([{ opacity: 0, transform: "translateY(60px) scale(.2)" }, { opacity: 1, transform: "translateY(-10px) scale(1.08)", offset: .6 }, { opacity: 1, transform: "translateY(0) scale(1)" }],
+                { duration: 700, easing: "cubic-bezier(.3,1.4,.5,1)", fill: "forwards", delay: 250 + i * 100 });
+    });
+    c.querySelectorAll(".ctitle,.cbody").forEach(function (e, i) {
+      e.animate([{ opacity: 0, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }], { duration: 400, fill: "forwards", delay: 450 + i * 80 });
+    });
+    c.querySelector(".cbtns").animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, fill: "forwards", delay: 700 });
+    if (!reduce) confetti(c.querySelector("canvas"), all.map(function (s) { return hueOf(s.c.b); }), run);
+  }
+
+  // Same physics as ConfettiBurst.swift.
+  function confetti(canvas, hues, run) {
+    var dpr = window.devicePixelRatio || 1, w = 393, h = 852;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    var ctx = canvas.getContext("2d"); ctx.scale(dpr, dpr);
+    var pieces = [];
+    for (var i = 0; i < 110; i++) {
+      var round = i % 4 === 0, s = round ? 7 + Math.random() * 4 : 6 + Math.random() * 4;
+      pieces.push({ a: -Math.PI + 0.25 + Math.random() * (Math.PI - 0.5), v: 420 + Math.random() * 560, spin: -9 + Math.random() * 18,
+                    w: s, h: round ? s : s * (1.6 + Math.random() * .8), hue: hues[i % hues.length] + (Math.random() * 24 - 12), round: round });
+    }
+    var start = performance.now();
+    function frame(now) {
+      if (run !== yesRun) return;
+      var t = (now - start) / 1000, fade = Math.max(0, 1 - Math.max(0, t - 1.5) / 1.0);
+      ctx.clearRect(0, 0, w, h);
+      if (fade <= 0) return;
+      var ox = w / 2, oy = h * 0.34;
+      pieces.forEach(function (p) {
+        var x = ox + Math.cos(p.a) * p.v * t, y = oy + Math.sin(p.a) * p.v * t + 0.5 * 1100 * t * t;
+        ctx.save(); ctx.globalAlpha = fade; ctx.translate(x, y); ctx.rotate(p.spin * t);
+        ctx.fillStyle = "hsl(" + p.hue + ",100%,78%)";
+        ctx.beginPath();
+        if (p.round) ctx.ellipse(0, 0, p.w / 2, p.h / 2, 0, 0, Math.PI * 2);
+        else if (ctx.roundRect) ctx.roundRect(-p.w / 2, -p.h / 2, p.w, p.h, 2);
+        else ctx.rect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.fill(); ctx.restore();
+      });
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  // ---------- 2. Someone says no ----------
+  var noRun = 0;
+  async function playNo() {
+    var run = ++noRun, dev = document.getElementById("dNo");
+    var st = { mine: [by("m2")], theirs: [by("y3")], myVote: null, theirVote: null, status: "Both sides ready · vote", locked: false };
+    render(dev, st);
+    await wait(1100); if (run !== noRun) return;
+    st.theirVote = false; st.status = "Mia said no · clearing the table"; st.locked = true;
+    render(dev, st);
+    var board = dev.querySelector(".board");
+    var stamp = document.createElement("div");
+    stamp.className = "stamp glass";
+    stamp.innerHTML = '<div class="big">✕ NO TRADE</div><div class="small mono">Mia said no</div>';
+    board.appendChild(stamp);
+    stamp.animate([{ opacity: 0, transform: "translate(-50%,-50%) rotate(-14deg) scale(2.2)" },
+                   { opacity: 1, transform: "translate(-50%,-50%) rotate(-5deg) scale(.94)", offset: .65 },
+                   { opacity: 1, transform: "translate(-50%,-50%) rotate(-6deg) scale(1)" }],
+                  { duration: 420, easing: "cubic-bezier(.2,.8,.3,1)", fill: "forwards" });
+    if (!reduce) {
+      board.animate([-16, 13, -10, 7, -4, 0].map(function (x) { return { transform: "translateX(" + x + "px)" }; }),
+                    { duration: 390, easing: "ease-out" });
+    }
+    await wait(740); if (run !== noRun) return;
+    var sweep = dev.querySelector(".sweep");
+    if (!reduce) sweep.animate([{ left: "-90px", opacity: 1 }, { left: "393px", opacity: 1 }], { duration: 700, easing: "ease-in-out" });
+    await wait(300); if (run !== noRun) return;
+    dev.querySelectorAll(".cluster, .seatname").forEach(function (e) {
+      e.animate([{ opacity: 1, transform: "scale(1)", filter: "blur(0)" }, { opacity: 0, transform: "scale(.6)", filter: "blur(6px)" }],
+                { duration: 280, easing: "ease-in", fill: "forwards" });
+    });
+    await wait(660); if (run !== noRun) return;
+    stamp.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, fill: "forwards" });
+    await wait(200); if (run !== noRun) return;
+    st = { mine: [], theirs: [], myVote: null, theirVote: null, status: "Put something on the table", locked: false };
+    render(dev, st);
+    dev.querySelectorAll(".seatcard.empty").forEach(function (e) {
+      e.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, fill: "forwards" });
+    });
+  }
+
+  // ---------- 3. More than one ----------
+  var manyState;
+  function resetMany() {
+    manyState = { mine: [by("m1"), by("m3"), by("m4"), by("m5"), by("m6")], theirs: [by("y1"), by("y2")], myVote: null, theirVote: null,
+                  status: "Both sides ready · vote", locked: false };
+    drawMany();
+  }
+  function drawMany() {
+    var dev = document.getElementById("dMany");
+    render(dev, manyState);
+    var mineSeat = dev.querySelector('.seat[data-side="mine"] .seatcard');
+    if (mineSeat && manyState.mine.length > 1) {
+      if (!reduce) mineSeat.animate([{ transform: "scale(1)" }, { transform: "scale(1.035)" }, { transform: "scale(1)" }], { duration: 1600, iterations: Infinity, easing: "ease-in-out" });
+    }
+    var scrim = document.createElement("div"); scrim.className = "scrim";
+    var exp = document.createElement("div"); exp.className = "exp glass";
+    dev.appendChild(scrim); dev.appendChild(exp);
+    dev.querySelectorAll("[data-seat]").forEach(function (btn) {
+      btn.addEventListener("click", function () { openSeat(dev, btn.getAttribute("data-seat")); });
+    });
+    scrim.addEventListener("click", function () { closeSeat(dev); });
+  }
+  function openSeat(dev, side) {
+    var items = side === "mine" ? manyState.mine : manyState.theirs;
+    var exp = dev.querySelector(".exp"), scrim = dev.querySelector(".scrim");
+    exp.style.transformOrigin = side === "mine" ? "left center" : "right center";
+    exp.innerHTML = '<div class="top"><div><div class="t">' + (side === "mine" ? "You put in" : "Mia puts in") + '</div><div class="mono" style="color:var(--ink2);margin-top:2px">' +
+      items.length + ' squeeshies</div></div><button class="close glass" aria-label="Close">✕</button></div>' +
+      '<div class="grid">' + items.map(function (s, i) {
+        return '<div class="etile glass in" data-id="' + s.id + '" style="transition-delay:' + (i * 50) + 'ms"><div class="p">' + photo(s) + '</div><div class="n">' + s.name + '</div>' +
+          '<div class="mono" style="color:var(--ink2)">squeesh ' + s.squish + '.0</div>' +
+          (side === "mine" ? '<button class="x" aria-label="Take ' + s.name + ' off the table">−</button>' : '') + '</div>';
+      }).join("") + '</div>';
+    scrim.classList.add("show"); exp.classList.add("show");
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      exp.querySelectorAll(".etile").forEach(function (t) { t.classList.remove("in"); });
+    }); });
+    exp.querySelector(".close").addEventListener("click", function () { closeSeat(dev); });
+    exp.querySelectorAll(".x").forEach(function (x) {
+      x.addEventListener("click", function () {
+        var tile = x.parentNode, id = tile.getAttribute("data-id");
+        tile.style.transitionDelay = "0ms";
+        tile.classList.add("gone");
+        setTimeout(function () {
+          manyState.mine = manyState.mine.filter(function (s) { return s.id !== id; });
+          tile.remove();
+          exp.querySelector(".top .mono").textContent = manyState.mine.length + (manyState.mine.length === 1 ? " squeeshy" : " squeeshies");
+          var seat = dev.querySelector('.seat[data-side="mine"]');
+          var tmp = document.createElement("div");
+          tmp.innerHTML = seatHTML("mine", "you", manyState.mine, null, "tap one of yours<br>to put it in");
+          seat.replaceWith(tmp.firstChild);
+          var nb = dev.querySelector('.seat[data-side="mine"] [data-seat]');
+          if (nb) nb.addEventListener("click", function () { openSeat(dev, "mine"); });
+          if (!manyState.mine.length) closeSeat(dev);
+        }, 280);
+      });
+    });
+  }
+  function closeSeat(dev) {
+    dev.querySelector(".exp").classList.remove("show");
+    dev.querySelector(".scrim").classList.remove("show");
+  }
+
+  document.querySelectorAll("[data-replay]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var k = b.getAttribute("data-replay");
+      if (k === "yes") playYes(); else if (k === "no") playNo(); else resetMany();
+    });
+  });
+
+  function fit() {
+    document.querySelectorAll(".fit").forEach(function (w) {
+      var d = w.firstElementChild, s = Math.min(1, w.clientWidth / 413);
+      d.style.transform = s < 1 ? "scale(" + s + ")" : "";
+      d.style.transformOrigin = "0 0";
+      w.style.height = (872 * s) + "px";
+    });
+  }
+  window.addEventListener("resize", fit); fit();
+
+  playYes(); playNo(); resetMany();
+  // Loop the two timed ones so the page is alive on arrival.
+  setInterval(function () { playYes(); }, 7000);
+  setTimeout(function () { setInterval(function () { playNo(); }, 7000); }, 1500);
+})();
+</script>
+</body>
+</html>

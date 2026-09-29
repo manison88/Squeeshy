@@ -20,6 +20,9 @@ struct TableSeat: View {
     var emptyText: String
     /// Hidden once the sweep has passed over them after a no.
     var isWiped: Bool = false
+    /// Names belong to the seat, not the squeeshies, so they fade while the
+    /// squeeshies cross to the other side.
+    var hidesCaption: Bool = false
     var swapOffset: CGSize = .zero
     var swapRotation: Angle = .zero
     var swapScale: CGFloat = 1
@@ -72,7 +75,8 @@ struct TableSeat: View {
                 .lineLimit(2)
                 .multilineTextAlignment(.center)
                 .frame(minHeight: 20)
-                .opacity(isWiped ? 0 : 1)
+                .opacity(isWiped || hidesCaption ? 0 : 1)
+                .animation(.easeOut(duration: 0.2), value: hidesCaption)
         }
         .frame(maxWidth: .infinity)
         .animation(Motion.arrive, value: items)
@@ -86,7 +90,9 @@ struct TableSeat: View {
         switch items.count {
         case 0: return ""
         case 1: return items[0].name
-        default: return "\(items.count) squeeshies · tap to see"
+        // The count badge and the tappable seat say the rest; a longer caption
+        // wraps in a half-width seat.
+        default: return "\(items.count) squeeshies"
         }
     }
 }
