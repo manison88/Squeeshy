@@ -77,10 +77,7 @@ struct RootView: View {
                     // Let the alert finish dismissing, or the sharing sheet has
                     // nothing to present from and silently fails.
                     try? await Task.sleep(for: .seconds(0.5))
-                    if let share = try? await friendsStore.shareForInvite() {
-                        CloudSharing.present(share: share, container: friendsStore.container,
-                                             title: "\(friendsStore.displayName)'s squeeshies")
-                    }
+                    await CloudSharing.invite(store: friendsStore)
                 }
             }
             Button("Not now", role: .cancel) { friendsStore.pendingShareBack = nil }

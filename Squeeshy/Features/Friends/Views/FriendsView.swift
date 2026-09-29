@@ -179,10 +179,7 @@ struct FriendsView: View {
         isPreparingInvite = true
         Task {
             defer { isPreparingInvite = false }
-            if let share = try? await store.shareForInvite() {
-                CloudSharing.present(share: share, container: store.container,
-                                     title: "\(store.displayName)'s squeeshies")
-            }
+            await CloudSharing.invite(store: store)
         }
     }
 }

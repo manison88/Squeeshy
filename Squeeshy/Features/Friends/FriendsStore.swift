@@ -356,7 +356,11 @@ final class FriendsStore {
 
     /// The share friends are invited to. Created on first use.
     func shareForInvite() async throws -> CKShare {
+        guard availability == .available else { throw TradeError.notReady }
         if let share { return share }
+        // The zone has to exist before a zone-wide share can be saved into it. It
+        // normally does from `start()`, but not if that step failed earlier.
+        try await cloud.ensureZone()
         if let existing = try await cloud.fetchShare() {
             share = existing
             return existing
@@ -365,8 +369,18 @@ final class FriendsStore {
         let created = try await cloud.createShare(title: title)
         share = created
         requestNotificationPermission()
-        await publish()
+        // Not awaited: the invite sheet must not wait on a whole collection's upload.
+        schedulePublish()
         return created
+    }
+
+    /// Shows a failure on the Friends screen rather than letting it vanish.
+    func report(_ error: Error) {
+        problem = Self.describe(error)
+    }
+
+    func report(_ message: String) {
+        problem = message
     }
 
     var container: CKContainer { cloud.container }
@@ -670,11 +684,18 @@ final class FriendsStore {
                 return "Your iCloud storage is full, so your shelf can't update."
             case .serviceUnavailable, .requestRateLimited, .zoneBusy:
                 return "iCloud is busy. Try again in a minute."
+            case .badContainer, .missingEntitlement:
+                return "This build isn't set up for iCloud yet: the container iCloud.com.squeeshy.app needs to exist and be ticked under Signing & Capabilities → iCloud."
+            case .permissionFailure:
+                return "iCloud refused permission for this account. Check Settings → your name → iCloud, and that iCloud Drive is on."
+            case .accountTemporarilyUnavailable:
+                return "iCloud needs attention on this device. Open Settings and check your Apple Account."
             default:
-                break
+                // Anything else: say what iCloud said, so it can be diagnosed.
+                return "iCloud said: \(ckError.localizedDescription) (code \(ckError.code.rawValue))"
             }
         }
-        return (error as? LocalizedError)?.errorDescription ?? "Something went wrong talking to iCloud."
+        return (error as? LocalizedError)?.errorDescription ?? "Something went wrong: \(error.localizedDescription)"
     }
 }
 
