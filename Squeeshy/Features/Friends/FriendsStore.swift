@@ -357,21 +357,25 @@ final class FriendsStore {
     /// The share friends are invited to. Created on first use.
     func shareForInvite() async throws -> CKShare {
         guard availability == .available else { throw TradeError.notReady }
-        if let share { return share }
         // The zone has to exist before a zone-wide share can be saved into it. It
         // normally does from `start()`, but not if that step failed earlier.
         try await cloud.ensureZone()
+        // Always the server's copy, never the one kept in memory: the invite sheet
+        // saves the share each time it adds someone, so a copy from before that
+        // is out of date, and the sheet fails with "couldn't create a link".
+        let current: CKShare
         if let existing = try await cloud.fetchShare() {
-            share = existing
-            return existing
+            current = existing
+        } else {
+            let title = hasDisplayName ? "\(displayName)'s squeeshies" : "Squeeshy shelf"
+            current = try await cloud.createShare(title: title)
+            requestNotificationPermission()
+            // Not awaited: the invite sheet must not wait on a whole collection's upload.
+            schedulePublish()
         }
-        let title = hasDisplayName ? "\(displayName)'s squeeshies" : "Squeeshy shelf"
-        let created = try await cloud.createShare(title: title)
-        share = created
-        requestNotificationPermission()
-        // Not awaited: the invite sheet must not wait on a whole collection's upload.
-        schedulePublish()
-        return created
+        share = current
+        guard current.url != nil else { throw TradeError.noInviteLink }
+        return current
     }
 
     /// Shows a failure on the Friends screen rather than letting it vanish.
@@ -435,6 +439,7 @@ final class FriendsStore {
         case nothingOffered
         case itemGone
         case alreadyPromised
+        case noInviteLink
 
         var errorDescription: String? {
             switch self {
@@ -443,6 +448,7 @@ final class FriendsStore {
             case .nothingOffered: "Pick at least one of yours to offer."
             case .itemGone: "One of those squeeshies isn't in your collection any more."
             case .alreadyPromised: "One of those squeeshies is already in another trade. Cancel that one first."
+            case .noInviteLink: "iCloud hasn't made an invite link yet. Wait a moment and tap Add a friend again."
             }
         }
     }

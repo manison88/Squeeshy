@@ -104,15 +104,28 @@ final class ShelfCloud {
     }
 
     /// Private by default: a forwarded invite link lets nobody else in.
+    ///
+    /// Returns the share as the server saved it. A save that failed must throw:
+    /// an unsaved share has no link, and the invite sheet shown for one can't
+    /// copy a link and spins forever in Messages.
     func createShare(title: String) async throws -> CKShare {
         let share = CKShare(recordZoneID: zoneID)
         share[CKShare.SystemFieldKey.title] = title
         share.publicPermission = .none
         let result = try await privateDB.modifyRecords(saving: [share], deleting: [])
-        if case .success(let saved)? = result.saveResults[share.recordID], let savedShare = saved as? CKShare {
+        switch result.saveResults[share.recordID] {
+        case .success(let saved)?:
+            guard let savedShare = saved as? CKShare else { throw CKError(.internalError) }
             return savedShare
+        case .failure(let error)?:
+            // Made meanwhile by another device (or an earlier tap): use that one.
+            if (error as? CKError)?.code == .serverRecordChanged, let existing = try await fetchShare() {
+                return existing
+            }
+            throw error
+        case nil:
+            throw CKError(.internalError)
         }
-        return share
     }
 
     func save(share: CKShare) async throws {
