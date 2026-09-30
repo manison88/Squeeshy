@@ -81,7 +81,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.squeeshy.app
         PRODUCT_NAME: Squeeshy
         MARKETING_VERSION: "0.1"
-        CURRENT_PROJECT_VERSION: "1"
+        CURRENT_PROJECT_VERSION: "2"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         # Portrait-only on the phone, where a landscape shelf list buys nothing. The
