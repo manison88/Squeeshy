@@ -121,6 +121,11 @@ xcodegen generate          # regenerate the project after adding files
 open Squeeshy.xcodeproj
 ```
 
+`Squeeshy.xcodeproj` is generated from `project.yml` and is not in git. Run
+`xcodegen generate` after every pull: a project generated before a pull doesn't list
+files the pull added, and the build fails with "Cannot find … in scope". Open only
+`Squeeshy.xcodeproj`; an old copy such as `Squeeshy 2.xcodeproj` is out of date.
+
 Or from the command line:
 
 ```bash

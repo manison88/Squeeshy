@@ -4,3 +4,5 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 Squeeshy.xcodeproj/
+# Stale copies of the generated project. Only project.yml is the source of truth.
+Squeeshy *.xcodeproj/
