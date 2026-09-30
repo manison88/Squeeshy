@@ -131,8 +131,8 @@ final class TradeTableSession: NSObject {
     /// still holds exactly that, so a squeeshy put in *during* the animation stays.
     private var rejectedSides: (mine: Set<String>, theirs: Set<String>)? = nil
 
-    /// Long enough for the stamp, the shake and the sweep to play out.
-    static let wipeDelay: Duration = .seconds(1.7)
+    /// Long enough for the portals to open, glitch and throw the squeeshies back.
+    static let wipeDelay: Duration = .seconds(2.6)
 
     private func noticeRejection(_ reason: Rejection.Reason) {
         // Only an open table can be rejected. A late or stale no after the trade

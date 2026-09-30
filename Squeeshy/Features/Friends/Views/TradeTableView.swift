@@ -17,14 +17,24 @@ struct TradeTableView: View {
 
     // Animation state. The session decides *what* happened; these only stage it.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// 0 at rest, 1 mid-swap (lifted and crossing), 2 landed on the other side.
-    @State private var swapStep = 0
+    /// How open the portals under both seats are, 0 → 1.
+    @State private var portalOpen: CGFloat = 0
+    /// How far the squeeshies have gone down through their portals, 0 → 1.
+    @State private var sink: CGFloat = 0
+    /// The arcs of light between the portals, 0 → 1.
+    @State private var beam: Double = 0
+    /// The squeeshies have come up through the other portal: each seat shows the other side's.
+    @State private var crossed = false
+    /// After a no: the portals flicker grey, shudder, and throw the squeeshies back up.
+    @State private var glitching = false
+    @State private var shake: CGFloat = 0
+    @State private var thrown: CGFloat = 0
+    @State private var sparksAt: Date?
     /// The swap has played out, so the celebration may take over once the trade is filed.
     @State private var swapDone = false
-    @State private var boardWidth: CGFloat = 0
-    @State private var shake: CGFloat = 0
-    @State private var sweep: Double = 0
     @State private var wiped = false
+    /// The last no, shown on the cleared board until something new goes on.
+    @State private var lastNo: TradeTableSession.Rejection?
     @State private var expanded: TableSide?
     /// The running stagings, so a table that closes mid-animation can't have an old
     /// animation land on the next one.
@@ -87,39 +97,53 @@ struct TradeTableView: View {
                 runSwap()
             } else if !isTradedPhase {
                 // Two yeses that didn't become a trade (a late no, something left
-                // the collection): put the squeeshies back on their own seats.
+                // the collection): bring the squeeshies back up on their own seats.
                 swapTask?.cancel()
                 swapDone = false
-                withAnimation(Motion.arrive) { swapStep = 0 }
+                sparksAt = nil
+                withTransaction(Transaction(animation: nil)) { crossed = false; beam = 0 }
+                withAnimation(Motion.arrive) { sink = 0; portalOpen = 0 }
             }
         }
         .onChange(of: session.rejection?.id) { _, id in
             if id != nil { runRejection() } else { endRejection() }
         }
+        .onChange(of: session.mine.isEmpty && session.theirs.isEmpty) { _, empty in
+            if !empty { withAnimation(Motion.tap) { lastNo = nil } }
+        }
         .sensoryFeedback(trigger: isTradedPhase) { _, traded in traded ? .success : nil }
-        .sensoryFeedback(trigger: swapStep) { _, step in step == 1 ? .impact(weight: .medium) : nil }
+        .sensoryFeedback(trigger: crossed) { _, crossed in crossed ? .impact(weight: .medium) : nil }
         .sensoryFeedback(trigger: session.rejection?.id) { _, id in id != nil ? .error : nil }
     }
 
     // MARK: Staging
 
-    /// Two yeses: each side's squeeshies lift, cross in an arc through a burst of
-    /// the table's colours, and land on the other side. The celebration waits for
-    /// this to finish.
+    /// Two yeses: glowing portals open under both seats, each side's squeeshies
+    /// sink into theirs, arcs of light cross the table, and they come up through
+    /// the other portal. The celebration waits for this to finish.
     private func runSwap() {
         withAnimation(Motion.tap) { expanded = nil }
         swapTask?.cancel()
         guard !reduceMotion else {
+            withTransaction(Transaction(animation: nil)) { crossed = true }
             withAnimation(Motion.nav) { swapDone = true }
             return
         }
         swapTask = Task {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.7)) { swapStep = 1 }
-            try? await Task.sleep(for: .seconds(0.45))
-            guard !Task.isCancelled else { return }
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.62)) { swapStep = 2 }
-            try? await Task.sleep(for: .seconds(0.8))
-            guard !Task.isCancelled else { return }
+            beam = 0
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { portalOpen = 1 }
+            guard await pause(0.45) else { return }
+            withAnimation(.easeIn(duration: 0.55)) { sink = 1 }
+            guard await pause(0.55) else { return }
+            withAnimation(.linear(duration: 0.9)) { beam = 1 }
+            guard await pause(0.9) else { return }
+            // Out of sight below both portals: change sides without animating it.
+            withTransaction(Transaction(animation: nil)) { crossed = true }
+            sparksAt = .now
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.62)) { sink = 0 }
+            guard await pause(0.6) else { return }
+            withAnimation(.easeIn(duration: 0.3)) { portalOpen = 0 }
+            guard await pause(0.45) else { return }
             withAnimation(Motion.nav) { swapDone = true }
         }
     }
@@ -129,47 +153,67 @@ struct TradeTableView: View {
         return false
     }
 
-    /// A no: the stamp lands (NoTradeStamp animates itself), the board shakes,
-    /// and a sweep crosses it, taking the squeeshies with it. The session empties
-    /// the sides a moment later, which ends the rejection.
+    /// A no: the portals open and start to pull, then glitch grey, shudder, and
+    /// throw the squeeshies back up onto their own seats, where they dissolve.
+    /// The session empties the sides once this has played (`wipeDelay`), which
+    /// ends the rejection and leaves the notice saying who said no.
     private func runRejection() {
         withAnimation(Motion.tap) { expanded = nil }
+        lastNo = session.rejection
         rejectionTask?.cancel()
         rejectionTask = Task {
-            if !reduceMotion {
-                for x in [-16.0, 13, -10, 7, -4, 0] {
-                    withAnimation(.spring(response: 0.08, dampingFraction: 0.5)) { shake = x }
-                    try? await Task.sleep(for: .milliseconds(65))
-                    guard !Task.isCancelled else { return }
-                }
-            }
-            try? await Task.sleep(for: .seconds(0.35))
-            guard !Task.isCancelled else { return }
             if reduceMotion {
+                guard await pause(0.3) else { return }
                 withAnimation(.easeOut(duration: 0.3)) { wiped = true }
                 return
             }
-            withAnimation(.easeInOut(duration: 0.7)) { sweep = 1 }
-            try? await Task.sleep(for: .seconds(0.3))
-            guard !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.6)) { portalOpen = 1 }
+            guard await pause(0.4) else { return }
+            withAnimation(.easeInOut(duration: 0.45)) { sink = 0.5 }
+            guard await pause(0.45) else { return }
+            glitching = true
+            for x: CGFloat in [-6, 6, -5, 5, -4, 4, -3, 3, 0] {
+                withAnimation(.linear(duration: 0.06)) { shake = x }
+                guard await pause(0.065) else { return }
+            }
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) { sink = 0; thrown = 90 }
+            withAnimation(.easeIn(duration: 0.3)) { portalOpen = 0 }
+            guard await pause(0.3) else { return }
+            glitching = false
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) { thrown = 0 }
+            guard await pause(0.45) else { return }
             withAnimation(Motion.tap) { wiped = true }
         }
+    }
+
+    /// Sleeps, then says whether the staging should carry on.
+    private func pause(_ seconds: Double) async -> Bool {
+        try? await Task.sleep(for: .seconds(seconds))
+        return !Task.isCancelled
     }
 
     private func endRejection() {
         rejectionTask?.cancel()
         rejectionTask = nil
         wiped = false
-        sweep = 0
+        glitching = false
         shake = 0
+        thrown = 0
+        sink = 0
+        portalOpen = 0
     }
 
     private func restart() {
         swapTask?.cancel()
         swapTask = nil
-        swapStep = 0
+        withTransaction(Transaction(animation: nil)) {
+            crossed = false
+            beam = 0
+        }
+        sparksAt = nil
         swapDone = false
         expanded = nil
+        lastNo = nil
         endRejection()
         session.end()
         session.begin(displayName: store.displayName, userID: store.myUserID, context: context)
@@ -285,7 +329,7 @@ struct TradeTableView: View {
                     board(large: false).padding(.horizontal, 20)
                 }
                 .scrollIndicators(.hidden)
-                // The swap lifts squeeshies above their seats; don't cut them off.
+                // A refused squeeshy is thrown up above its seat; don't cut it off.
                 .scrollClipDisabled()
                 VStack(alignment: .leading, spacing: 8) {
                     MetaLabel(text: "your squeeshies")
@@ -313,54 +357,50 @@ struct TradeTableView: View {
     }
 
     private func board(large: Bool) -> some View {
-        VStack(spacing: large ? 30 : 18) {
+        let staging = portalOpen > 0 || sink > 0 || crossed
+        return VStack(spacing: large ? 30 : 18) {
             HStack(alignment: .top, spacing: 10) {
                 TableSeat(title: large ? "you put in" : "you",
-                          items: session.mine,
+                          items: crossed ? session.theirs : session.mine,
                           vote: session.myCurrentVote,
                           emptyText: "tap one of yours\nto put it in",
                           isWiped: wiped,
-                          hidesCaption: swapStep > 0,
-                          swapOffset: swapOffset(for: .mine),
-                          swapRotation: .degrees(swapStep == 1 ? 14 : 0),
-                          swapScale: swapStep == 1 ? 1.12 : 1) {
+                          hidesCaption: staging,
+                          portal: portal(under: .mine),
+                          sink: sink, lift: thrown, jitter: shake) {
                     withAnimation(Motion.arrive) { expanded = .mine }
                 }
-                .zIndex(swapStep > 0 ? 2 : 0)
 
                 Image(systemName: "arrow.left.arrow.right")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(Color.ink3)
                     .frame(width: 20)
                     .padding(.top, large ? 150 : 90)
-                    .opacity(swapStep > 0 ? 0 : 1)
+                    .opacity(staging ? 0 : 1)
                     .accessibilityHidden(true)
 
                 TableSeat(title: large ? "\(session.partnerName) puts in" : session.partnerName,
-                          items: session.theirs,
+                          items: crossed ? session.mine : session.theirs,
                           vote: session.theirCurrentVote,
                           emptyText: "waiting for\n\(session.partnerName)",
                           isWiped: wiped,
-                          hidesCaption: swapStep > 0,
-                          swapOffset: swapOffset(for: .theirs),
-                          swapRotation: .degrees(swapStep == 1 ? -14 : 0),
-                          swapScale: swapStep == 1 ? 1.12 : 1) {
+                          hidesCaption: staging,
+                          portal: portal(under: .theirs),
+                          sink: sink, lift: thrown, jitter: -shake) {
                     withAnimation(Motion.arrive) { expanded = .theirs }
                 }
-                .zIndex(swapStep > 0 ? 1 : 0)
             }
             .padding(.top, 6)
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { boardWidth = $0 }
-            .overlay { SwapGlow(tint: tint, isActive: swapStep == 1) }
-            .overlay { SweepBar(progress: sweep) }
             .overlay {
-                if let rejection = session.rejection {
-                    NoTradeStamp(reason: rejection.reason, partner: session.partnerName)
-                        .transition(.opacity)
-                }
+                PortalBeams(progress: beam,
+                            hues: (mine: session.mine.first?.hue ?? 330,
+                                   theirs: session.theirs.first?.hue ?? 330))
             }
-            .offset(x: shake)
-            .animation(Motion.tap, value: session.rejection?.id)
+
+            if let lastNo, showsNoNotice {
+                NoTradeNotice(reason: lastNo.reason, partner: session.partnerName)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
 
             MetaLabel(text: session.statusLine)
                 .multilineTextAlignment(.center)
@@ -378,21 +418,23 @@ struct TradeTableView: View {
             .disabled(!canVote)
             .opacity(canVote ? 1 : 0.35)
         }
+        .animation(Motion.arrive, value: showsNoNotice)
+    }
+
+    /// The cleared board says who said no, until something new goes on.
+    private var showsNoNotice: Bool {
+        lastNo != nil && session.rejection == nil && session.mine.isEmpty && session.theirs.isEmpty
     }
 
     private var canVote: Bool { session.bothSidesFilled && session.canChangeTable }
 
-    /// How far each side's squeeshies travel to land on the other seat: the
-    /// distance between the two seat centres. Lifted one way and dropped the other
-    /// mid-flight, so they cross in an arc rather than colliding.
-    private func swapOffset(for side: TableSide) -> CGSize {
-        let travel = (boardWidth + 40) / 2
-        let direction: CGFloat = side == .mine ? 1 : -1
-        switch swapStep {
-        case 1: return CGSize(width: direction * travel / 2, height: side == .mine ? -44 : 44)
-        case 2: return CGSize(width: direction * travel, height: 0)
-        default: return .zero
-        }
+    /// Each portal glows in the colour of what's coming up through it.
+    private func portal(under side: TableSide) -> SeatPortal {
+        let incoming = side == .mine ? session.theirs : session.mine
+        return SeatPortal(open: portalOpen,
+                          hue: incoming.first?.hue ?? 330,
+                          glitching: glitching,
+                          sparksAt: sparksAt)
     }
 
     /// A seat opened up to show everything on that side.

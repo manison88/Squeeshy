@@ -308,12 +308,14 @@ Code: `Squeeshy/Features/Friends/`.
   puts squeeshies in and votes ✓ / ✗. Both ✓ on the same table trades instantly.
   Changing the table clears both votes, so a yes never carries over to a different
   squeeshy, and the swap is only filed once both phones hold each other's squeeshies.
-  Two yeses play a swap — each side's squeeshies lift and cross to the other seat —
-  and the celebration (stamp, confetti in the traded squeeshies' colours) waits for it
-  to land, however fast the phones finished. A no slams a NO TRADE stamp on the board,
-  shakes it, and sweeps it clean; each phone then empties its own side (unless its
-  owner already put something new in), so the table is ready for the next offer. The
-  table is locked from two yeses until the swap is filed, and during a no.
+  Two yeses play the portal swap: glowing portals open under both seats, the
+  squeeshies sink in, arcs of light cross the table, and they rise out of the other
+  portal. The celebration (confetti in the traded squeeshies' colours) waits for it
+  to land, however fast the phones finished. After a no the portals start to pull,
+  glitch grey and throw the squeeshies back up, where they dissolve; each phone then
+  empties its own side (unless its owner already put something new in), and the
+  cleared board says who said no until something new goes on. The table is locked
+  from two yeses until the swap is filed, and during a no.
   A seat with several squeeshies shows them as a cluster with a count; tap it to see
   them all, and take your own off from there.
 
